@@ -1,0 +1,170 @@
+generator client {
+  provider = "prisma-client-js"
+}
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+enum Role {
+  OWNER
+  RISK_MANAGER
+  ASSESSOR
+  VIEWER
+  AUDITOR
+}
+enum RiskTreatment {
+  ACCEPT
+  MITIGATE
+  TRANSFER
+  AVOID
+  NONE
+}
+enum RiskStatus {
+  DRAFT
+  OPEN
+  IN_REVIEW
+  TREATMENT
+  IN_MONITORING
+  ACCEPTED
+  CLOSED
+}
+enum RiskCategory {
+  CYBERSECURITY
+  COMPLIANCE
+  OPERATIONAL
+  STRATEGIC
+  FINANCIAL
+  PEOPLE
+  THIRD_PARTY
+  RESILIENCE
+  PRIVACY
+}
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+}
+
+model Tenant {
+  id String @id @default(cuid())
+  name String
+  slug String @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  users User[]
+  memberships Membership[]
+  risks Risk[]
+  auditEvents AuditEvent[]
+}
+model User {
+  id String @id @default(cuid())
+  tenantId String
+  email String @unique
+  name String
+  passwordHash String
+  emailVerified DateTime?
+  image String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  memberships Membership[]
+  ownedRisks Risk[] @relation("RiskOwner")
+  auditEvents AuditEvent[] @relation("AuditActor")
+  accounts Account[]
+  sessions Session[]
+  @@index([tenantId])
+  @@index([tenantId, email])
+}
+model Account {
+  id String @id @default(cuid())
+  userId String
+  type String
+  provider String
+  providerAccountId String
+  refresh_token String? @db.Text
+  access_token String? @db.Text
+  expires_at Int?
+  token_type String?
+  scope String?
+  id_token String? @db.Text
+  session_state String?
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+model Session {
+  id String @id @default(cuid())
+  sessionToken String @unique
+  userId String
+  expires DateTime
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId])
+}
+model VerificationToken {
+  identifier String
+  token String
+  expires DateTime
+  @@unique([identifier, token])
+}
+model Membership {
+  id String @id @default(cuid())
+  tenantId String
+  userId String
+  role Role @default(VIEWER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([tenantId, userId])
+  @@index([tenantId])
+  @@index([userId])
+}
+model Risk {
+  id String @id @default(cuid())
+  tenantId String
+  reference String
+  title String
+  description String
+  category RiskCategory
+  ownerId String
+  inherentLikelihood Int
+  inherentImpact Int
+  inherentScore Int
+  residualLikelihood Int?
+  residualImpact Int?
+  residualScore Int?
+  treatment RiskTreatment @default(NONE)
+  status RiskStatus @default(OPEN)
+  nextReviewDate DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  owner User @relation("RiskOwner", fields: [ownerId], references: [id])
+  auditEvents AuditEvent[]
+  @@unique([tenantId, reference])
+  @@index([tenantId])
+  @@index([tenantId, deletedAt])
+  @@index([tenantId, status])
+  @@index([tenantId, residualScore])
+  @@index([ownerId])
+}
+model AuditEvent {
+  id String @id @default(cuid())
+  tenantId String
+  riskId String?
+  actorId String
+  action AuditAction
+  entityType String @default("Risk")
+  entityId String
+  summary String
+  changes Json?
+  createdAt DateTime @default(now())
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  risk Risk? @relation(fields: [riskId], references: [id], onDelete: SetNull)
+  actor User @relation("AuditActor", fields: [actorId], references: [id])
+  @@index([tenantId])
+  @@index([tenantId, entityId])
+  @@index([riskId])
+  @@index([actorId])
+}

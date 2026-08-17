@@ -1,36 +1,28 @@
 # Project Memory
+
 ## Mission
-Northstar GRC is a React/Vite + FastAPI/PostgreSQL risk register and assessment tool. It helps organisations make consistent, accountable risk decisions; it is not a certification product.
 
-## Repository map
-- `frontend/src/RiskAssessment.jsx`: current functional risk-register experience and local state model.
-- `frontend/src/App.jsx`: application entry wrapper; legacy visual shell is retained below the active component as migration reference.
-- `frontend/src/index.css`: Tailwind entry and global focus/base rules.
-- `backend/app/main.py`: FastAPI app and health router.
-- `backend/app/core/config.py`: environment-driven backend settings.
-- `docs/PROJECT_CHARTER.md`: scope, outcomes, principles, and governance.
-- `docs/DECISIONS.md`: decisions and rationale.
-- `docs/ROADMAP.md`: sequenced delivery plan.
-- `docs/OPERATIONS.md`: development and release practices.
+BeyondBeams GRC is a multi-tenant risk register and assessment workspace for accountable organisational risk decisions. It does not claim regulatory certification.
 
-## Current baseline (2026-08-16)
-- Phase 1-3 local product slice is implemented on branch `feature/phase-1-3-grc-platform`.
-- Frontend provides overview, searchable/filterable register, risk creation, detail drawer, inherent/residual heat map, treatment action view, control details, report center, and CSV export.
-- Backend provides Pydantic risk contracts, authoritative 1-5 scoring, separate assessments, controls/actions, dashboard, heat-map, executive summary, CSV, and in-process audit events.
-- Local seeded data uses the in-process `RiskStore`; it is a development adapter, not durable PostgreSQL persistence.
-- OIDC/RBAC, tenant isolation, PostgreSQL migrations/repository, background reports, object storage, notifications, and production observability remain deployment gates.
+## Current architecture
 
-## Non-negotiable working rules
-- Read this file and the charter before extending product behavior.
-- Search before adding a new component, endpoint, or document.
-- Never claim a feature is complete without running the relevant build/test and recording the result.
-- Never put secrets in `VITE_*` variables, source code, or committed `.env` files.
-- Preserve the distinction between inherent risk, residual risk, controls, and actions.
-- Prefer small, reversible changes. Update this memory and decision log after meaningful work.
+- Root application: Next.js 15 App Router with strict TypeScript and Tailwind/shadcn UI.
+- Authentication: Auth.js v5 credentials with JWT sessions; adapter schema is magic-link ready.
+- Persistence: Prisma with SQLite locally and an equivalent PostgreSQL schema for production migration.
+- Authorization: tenant and role are derived from the authenticated session; risk queries are tenant-scoped.
+- Product views: dashboard, heat map, searchable register, risk detail/history, and create/edit forms.
 
-## Known gaps / next best work
-1. Move risk schemas and scoring to the backend with versioned scoring policy.
-2. Add PostgreSQL migrations and repository/service layers.
-3. Add OIDC authentication and workspace-scoped RBAC.
-4. Add controls, action plans, residual risk, approval workflow, and immutable audit events.
-5. Add tests for scoring boundaries, permissions, validation, and key UI flows.
+The former `frontend/` Vite and `backend/` FastAPI directories remain as migration history but are not the canonical application.
+
+## Working rules
+
+- Every record query must be scoped by the authenticated `tenantId`.
+- Never trust tenant IDs or roles supplied by browser input.
+- Preserve inherent and residual assessments as distinct fields.
+- Recalculate scores on the server for every create and update.
+- Material risk changes require audit events; deletion remains soft.
+- Never claim a build or test passed without command output.
+
+## Verification status (2026-08-17)
+
+Implementation is complete and verified. Prisma schema validation, client generation, SQLite creation, demo seeding, strict TypeScript checking, and the Next.js production build pass. The seeded database contains one tenant, one user, eight risks, and eight audit events. Live HTTP smoke tests passed for the branded login, anonymous redirect, credentials authentication, dashboard, and seeded risk register. The server is running on port 3001 because port 3000 was already occupied.

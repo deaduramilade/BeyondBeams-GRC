@@ -1,0 +1,3 @@
+import { Badge } from "@/components/ui/badge";
+import { cn, riskLevel } from "@/lib/utils";
+export function RiskBadge({ score }: { score: number | null }) { const level = riskLevel(score); return <Badge className={cn(level === "High" && "border-red-500/25 bg-red-500/10 text-red-400", level === "Medium" && "border-amber-500/25 bg-amber-500/10 text-amber-400", level === "Low" && "border-emerald-500/25 bg-emerald-500/10 text-emerald-400", level === "Unassessed" && "text-muted-foreground")}>{score ?? "-"} · {level}</Badge>; }

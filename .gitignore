@@ -1,4 +1,8 @@
 node_modules/
+.next/
+*.tsbuildinfo
+prisma/dev.db
+prisma/dev.db-journal
 __pycache__/
 *.py[cod]
 .pytest_cache/

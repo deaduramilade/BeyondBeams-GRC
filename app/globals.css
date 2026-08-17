@@ -1,0 +1,12 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root { --background: 210 36% 97%; --foreground: 210 64% 11%; --card: 0 0% 100%; --card-foreground: 210 64% 11%; --primary: 173 100% 33%; --primary-foreground: 210 64% 8%; --secondary: 210 28% 92%; --secondary-foreground: 210 64% 11%; --muted: 210 22% 92%; --muted-foreground: 211 17% 42%; --accent: 173 42% 91%; --accent-foreground: 173 100% 22%; --destructive: 2 72% 52%; --destructive-foreground: 0 0% 100%; --border: 210 19% 85%; --input: 210 19% 80%; --ring: 173 100% 33%; --radius: .45rem; }
+  .dark { --background: 210 64% 7%; --foreground: 210 20% 94%; --card: 210 52% 10%; --card-foreground: 210 20% 94%; --primary: 173 100% 33%; --primary-foreground: 210 64% 7%; --secondary: 210 38% 15%; --secondary-foreground: 210 20% 94%; --muted: 210 35% 14%; --muted-foreground: 210 14% 61%; --accent: 173 35% 16%; --accent-foreground: 173 78% 62%; --destructive: 2 62% 45%; --destructive-foreground: 0 0% 100%; --border: 210 30% 19%; --input: 210 28% 23%; --ring: 173 100% 33%; }
+  * { @apply border-border; }
+  body { @apply bg-background text-foreground antialiased; }
+  ::selection { background: #00a896; color: #061a2b; }
+}
+@layer utilities { .text-balance { text-wrap: balance; } }

@@ -1,59 +1,43 @@
-# GRC Risk Register & Assessment Tool
+# BeyondBeams GRC
 
-A portfolio project for managing and assessing organizational risk. It is designed to demonstrate practical React, FastAPI, PostgreSQL, and secure-development practices without making claims of regulatory certification or production compliance.
+BeyondBeams GRC is a multi-tenant risk register and assessment workspace built with Next.js 15, strict TypeScript, Auth.js, Prisma, Tailwind CSS, shadcn/ui, Radix UI, and SQLite for zero-setup local development.
 
-## Current status
-The Phase 1-3 product slice is implemented for local integration and review. It includes a responsive risk workspace, API-backed risk register with local demo fallback, backend-authoritative 1-5 scoring, separate inherent and residual assessments, controls and treatment actions, residual/inherent heat maps, dashboard metrics, audit events, executive report facts, and CSV register export.
+## Local setup
 
-Deployment prerequisites remain explicit: the current API store is an in-process repository for development and must be replaced by the PostgreSQL repository and migrations before multi-instance production use; OIDC, workspace-scoped RBAC, managed secrets, object storage for report artifacts, background report jobs, and operational monitoring require environment-specific configuration and release verification. Until those gates are completed, treat the local deployment as a reviewable product build, not a production system of record.
+Prerequisites: Node.js 20 or 22 LTS and npm.
 
-## Architecture
+```bash
+npm install
+cp .env.example .env
+npm run setup
+npm run dev
+```
 
-`React/Vite frontend → FastAPI API → PostgreSQL`
+On Windows PowerShell, use `Copy-Item .env.example .env` instead of `cp`. Open [http://localhost:3000](http://localhost:3000).
 
-The browser communicates only with FastAPI. PostgreSQL credentials stay in backend/local environment configuration and never belong in frontend variables. The current backend domain/service boundary is designed so the in-process store can be replaced by a PostgreSQL repository without changing the API contract.
+## Demo login
 
-## Local development
+- Email: `owner@beyondbeams.com`
+- Password: `BeyondBeams2026!`
 
-### Backend
+The seed creates one demo tenant, one Owner membership, and eight realistic sample risks.
 
-1. Create and activate a virtual environment in `backend/`.
-2. Install dependencies: `pip install -r requirements.txt`.
-3. Copy the root `.env.example` to a local `.env` and fill only local values.
-4. Run: `uvicorn app.main:app --reload --port 8000` from `backend/`.
-5. Verify: `GET http://127.0.0.1:8000/api/health`.
+## Commands
 
-### Frontend
+- `npm run dev`: start the development server.
+- `npm run build`: run a production build.
+- `npm run typecheck`: run strict TypeScript checking.
+- `npm run setup`: generate Prisma Client, create the SQLite database, and seed demo data.
+- `npm run db:seed`: reset the demo tenant's sample risks.
 
-1. In `frontend/`, run `npm install`.
-2. Copy the root `.env.example` values needed by the frontend to `frontend/.env.local` (only `VITE_API_BASE_URL`).
-3. Run `npm run dev`.
+## Data and authentication
 
-### PostgreSQL with Docker
+Local development uses `prisma/schema.prisma` with SQLite. `prisma/schema.postgresql.prisma` provides the equivalent PostgreSQL schema for production migration. Do not use both schemas against the same generated client.
 
-1. Put a local `POSTGRES_PASSWORD` in a root `.env` file. Do not commit it.
-2. Run `docker compose up -d postgres`.
-3. Set the backend `DATABASE_URL` locally. PostgreSQL repository wiring and migrations are a deployment gate; the local API currently starts with an in-process seeded repository so the complete workflow can be reviewed without a database.
+Credentials authentication is enabled for local development. Auth.js adapter models (`Account`, `Session`, and `VerificationToken`) are included so an email provider can be configured without redesigning the database. Set a strong `AUTH_SECRET` outside local development.
 
-## Security notes
+All risk and audit operations derive `tenantId` from the authenticated server session. Owner, Risk Manager, and Assessor roles may create or edit risks; Owner and Risk Manager may delete; Viewer and Auditor are read-only. Deletes are soft deletes and create audit events.
 
-- `.env`, virtual environments, build artifacts, local keys, and generated reports are ignored.
-- No credentials or API secrets are present in this repository.
-- `VITE_*` variables are public browser values; never use them for secrets.
-- CORS origins are environment-configured and do not default to a wildcard.
+## Production notes
 
-## Project documentation
-- [Project charter](docs/PROJECT_CHARTER.md) — purpose, scope, principles, and success measures.
-- [Project memory](MEMORY.md) — current baseline, working rules, and known gaps for future assistants.
-- [Architecture decisions](docs/DECISIONS.md) — durable product and engineering rationale.
-- [Roadmap](docs/ROADMAP.md) — sequenced delivery plan and release gates.
-- [Operations guide](docs/OPERATIONS.md) — development, security, validation, and change discipline.
-
-See the roadmap for the next milestones: trusted data foundation, governance controls, and insight/assurance.
-
-## API surface
-- `GET/POST /api/v1/risks` and `GET /api/v1/risks/{id}` for the register and risk detail.
-- `POST /api/v1/risks/{id}/assessments/{inherent|residual}` for versioned assessments.
-- `POST /api/v1/risks/{id}/controls` and `/actions` for response tracking.
-- `GET /api/v1/dashboard`, `/heat-map`, `/audit`, and `/reports/executive-summary` for management views.
-- `GET /api/v1/reports/risk-register.csv` for operational export.
+Before production, configure PostgreSQL, a transactional email provider for magic links, managed secrets, HTTPS, database migrations, backups, monitoring, rate limiting, and tenant provisioning. The included credentials flow and seed password are development conveniences.
