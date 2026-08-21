@@ -1,0 +1,15 @@
+warning: in the working copy of '.env.example', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.gitignore', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'MEMORY.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/index.html', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/src/App.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/src/index.css', LF will be replaced by CRLF the next time Git touches it
+ .env.example           | 11 [32m+++[m[31m-----[m
+ .gitignore             |  3 [32m+++[m
+ MEMORY.md              | 60 [32m+++++++++++++++++++[m[31m------------------------[m
+ README.md              | 70 [32m+++++++++++++++++++[m[31m-------------------------------[m
+ frontend/index.html    |  2 [32m+[m[31m-[m
+ frontend/src/App.jsx   |  8 [32m+++++[m[31m-[m
+ frontend/src/index.css |  8 [32m+++++[m[31m-[m
+ 7 files changed, 74 insertions(+), 88 deletions(-)
