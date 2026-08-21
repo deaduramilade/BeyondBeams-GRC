@@ -1,0 +1,2 @@
+import{redirect}from"next/navigation";import{auth}from"@/auth";import{AuthLayout}from"@/components/auth-layout";import{RegisterForm}from"@/components/auth-forms";
+export default async function RegisterPage(){if(await auth())redirect("/app");return <AuthLayout eyebrow="Start free" title="Create your workspace" description="Your organisation is isolated from every other tenant. You become its Owner and can invite your team."><RegisterForm/></AuthLayout>}
