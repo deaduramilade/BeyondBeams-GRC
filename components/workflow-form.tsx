@@ -1,0 +1,18 @@
+"use client";
+
+import { useState, useTransition } from "react";
+import { LoaderCircle, Save } from "lucide-react";
+import { createGrcRecord } from "@/app/actions/workflows";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import type { ModuleSlug } from "@/lib/modules";
+
+const control = "min-h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring";
+export function WorkflowForm({ module, definition, userName }: { module: ModuleSlug; definition: { titleLabel: string; detailsLabel: string; outcomeLabel: string; defaultOutcome: string }; userName: string }) {
+  const [pending, start] = useTransition(); const [message, setMessage] = useState("");
+  function submit(event: React.FormEvent<HTMLFormElement>) { event.preventDefault(); const form = new FormData(event.currentTarget); start(async () => { const result = await createGrcRecord({ module, title: String(form.get("title")), owner: String(form.get("owner")), status: String(form.get("status")), priority: String(form.get("priority")), dueDate: form.get("dueDate") ? new Date(`${form.get("dueDate")}T12:00:00`) : null, details: String(form.get("details")), outcome: String(form.get("outcome")) }); if ("error" in result) setMessage(result.error ?? "Unable to save."); else { setMessage("Saved with an audit event."); event.currentTarget.reset(); } }); }
+  return <Card><CardHeader><h2 className="text-sm font-bold">Create structured record</h2><p className="mt-1 text-xs text-muted-foreground">Required fields drive ownership, due dates, and an actionable outcome.</p></CardHeader><CardContent><form onSubmit={submit} className="grid gap-5"><Field label={definition.titleLabel}><Input name="title" required minLength={3}/></Field><div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4"><Field label="Accountable owner"><Input name="owner" required defaultValue={userName}/></Field><Field label="Status"><select name="status" className={control}>{["DRAFT","OPEN","IN REVIEW","IN PROGRESS","COMPLETE"].map(x=><option key={x}>{x}</option>)}</select></Field><Field label="Priority"><select name="priority" className={control}>{["LOW","MEDIUM","HIGH","CRITICAL"].map(x=><option key={x}>{x}</option>)}</select></Field><Field label="Due date"><Input name="dueDate" type="date"/></Field></div><Field label={definition.detailsLabel}><textarea name="details" required minLength={10} rows={6} className={`${control} py-3`}/></Field><Field label={definition.outcomeLabel}><textarea name="outcome" required minLength={10} rows={4} defaultValue={definition.defaultOutcome} className={`${control} py-3`}/></Field><div className="flex items-center gap-4"><Button type="submit" disabled={pending}>{pending ? <LoaderCircle className="size-4 animate-spin"/> : <Save className="size-4"/>}Save record</Button>{message && <p role="status" className={`text-xs ${message.startsWith("Saved") ? "text-primary" : "text-red-400"}`}>{message}</p>}</div></form></CardContent></Card>;
+}
+function Field({ label, children }: { label: string; children: React.ReactNode }) { return <div className="space-y-2"><Label className="text-xs font-semibold">{label}</Label>{children}</div>; }
