@@ -51,6 +51,31 @@ enum AuditAction {
   DELETE
 }
 
+enum Plan {
+  FREE
+  BASIC
+  PROFESSIONAL
+  PREMIUM
+}
+
+enum ReportType {
+  RISK_REGISTER
+  BOARD_REPORT
+  AUDIT_TRAIL
+}
+
+enum ExportFormat {
+  CSV
+  XLSX
+  PDF
+}
+
+enum ExportStatus {
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
 model Tenant {
   id                   String                @id @default(cuid())
   name                 String
@@ -64,26 +89,40 @@ model Tenant {
   grcRecords           GrcRecord[]
   complianceReferences ComplianceReference[]
   emergingRisks        EmergingRisk[]
+  plan                 Plan                  @default(FREE)
+  exports              ExportHistory[]
+  savedReports         SavedReport[]
+  frameworkSelections  TenantFramework[]
+  reviewRemindersEnabled Boolean             @default(true)
+  reviewReminderCadence String              @default("7,1,0")
+  notifications         Notification[]
 }
 
 model User {
-  id             String       @id @default(cuid())
-  tenantId       String
-  email          String       @unique
-  name           String
-  passwordHash   String
-  emailVerified  DateTime?
-  image          String?
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
-  tenant         Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  memberships    Membership[]
-  ownedRisks     Risk[]       @relation("RiskOwner")
-  auditEvents    AuditEvent[] @relation("AuditActor")
-  accounts       Account[]
-  sessions       Session[]
-  translatorUses Int          @default(0)
-  paidPlan       Boolean      @default(false)
+  id               String          @id @default(cuid())
+  tenantId         String
+  email            String          @unique
+  name             String
+  passwordHash     String
+  emailVerified    DateTime?
+  image            String?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  tenant           Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  memberships      Membership[]
+  ownedRisks       Risk[]          @relation("RiskOwner")
+  auditEvents      AuditEvent[]    @relation("AuditActor")
+  accounts         Account[]
+  sessions         Session[]
+  translatorUses   Int             @default(0)
+  paidPlan         Boolean         @default(false)
+  generatedExports ExportHistory[]
+  savedReports     SavedReport[]
+  riskMappings     RiskFrameworkMapping[]
+  reviewEmailsEnabled Boolean             @default(true)
+  assignmentEmailsEnabled Boolean         @default(true)
+  exportEmailsEnabled Boolean             @default(true)
+  notifications    Notification[]
 
   @@index([tenantId])
   @@index([tenantId, email])
@@ -173,6 +212,7 @@ model Risk {
   auditEvents        AuditEvent[]
   complianceLinks    RiskComplianceLink[]
   emergingSource     EmergingRisk?        @relation("PromotedRisk")
+  frameworkMappings   RiskFrameworkMapping[]
 
   @@unique([tenantId, reference])
   @@index([tenantId])
@@ -180,6 +220,65 @@ model Risk {
   @@index([tenantId, status])
   @@index([tenantId, residualScore])
   @@index([ownerId])
+}
+
+model Framework {
+  id             String           @id @default(cuid())
+  name           String           @unique
+  version        String
+  description    String
+  industryTags   String
+  controls       FrameworkControl[]
+  tenantSelections TenantFramework[]
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  @@index([name])
+}
+
+model FrameworkControl {
+  id          String        @id @default(cuid())
+  frameworkId String
+  controlId   String
+  title       String
+  description String
+  category    String
+  framework   Framework     @relation(fields: [frameworkId], references: [id], onDelete: Cascade)
+  mappings    RiskFrameworkMapping[]
+
+  @@unique([frameworkId, controlId])
+  @@index([frameworkId])
+  @@index([controlId])
+  @@index([title])
+}
+
+model TenantFramework {
+  id          String   @id @default(cuid())
+  tenantId    String
+  frameworkId String
+  enabled     Boolean  @default(true)
+  enabledAt   DateTime @default(now())
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  framework   Framework @relation(fields: [frameworkId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, frameworkId])
+  @@index([tenantId, enabled])
+}
+
+model RiskFrameworkMapping {
+  id                 String          @id @default(cuid())
+  riskId             String
+  frameworkControlId String
+  mappedBy           String
+  mappedAt           DateTime        @default(now())
+  notes              String?
+  risk               Risk            @relation(fields: [riskId], references: [id], onDelete: Cascade)
+  frameworkControl   FrameworkControl @relation(fields: [frameworkControlId], references: [id], onDelete: Cascade)
+  mapper             User            @relation(fields: [mappedBy], references: [id])
+
+  @@unique([riskId, frameworkControlId])
+  @@index([riskId])
+  @@index([frameworkControlId])
+  @@index([mappedBy])
 }
 
 model GrcRecord {
@@ -276,4 +375,70 @@ model AuditEvent {
   @@index([tenantId, entityId])
   @@index([riskId])
   @@index([actorId])
+}
+
+model ExportHistory {
+  id            String       @id @default(cuid())
+  tenantId      String
+  generatedById String
+  reportType    ReportType
+  format        ExportFormat
+  fileName      String
+  status        ExportStatus @default(PROCESSING)
+  createdAt     DateTime     @default(now())
+  completedAt   DateTime?
+  tenant        Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  generatedBy   User         @relation(fields: [generatedById], references: [id], onDelete: Cascade)
+  artifactBase64 String?
+  downloadTokenHash String?   @unique
+  downloadExpires DateTime?
+
+  @@index([tenantId, createdAt])
+  @@index([tenantId, status, createdAt])
+  @@index([generatedById])
+}
+
+model Notification {
+  id           String   @id @default(cuid())
+  tenantId     String
+  recipient    String
+  type         String
+  relatedEntityType String?
+  relatedEntityId String?
+  subject      String
+  status       String   @default("SENT")
+  provider     String   @default("local-preview")
+  dedupeKey    String?  @unique
+  sentAt       DateTime @default(now())
+  createdAt    DateTime @default(now())
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user         User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userId       String?
+
+  @@index([tenantId, type, createdAt])
+  @@index([tenantId, recipient])
+  @@index([relatedEntityType, relatedEntityId])
+}
+
+model SavedReport {
+  id                String       @id @default(cuid())
+  tenantId          String
+  createdById       String
+  name              String
+  reportType        ReportType
+  format            ExportFormat
+  configJson        String       @default("{}")
+  scheduleEnabled   Boolean      @default(false)
+  scheduleFrequency String?
+  recipientsJson    String       @default("[]")
+  nextRunAt         DateTime?
+  lastRunAt         DateTime?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  tenant            Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdBy         User         @relation(fields: [createdById], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, createdAt])
+  @@index([tenantId, scheduleEnabled, nextRunAt])
+  @@index([createdById])
 }

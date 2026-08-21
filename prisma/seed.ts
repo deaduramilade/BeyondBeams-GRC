@@ -1,6 +1,7 @@
-import { PrismaClient, RiskCategory, RiskStatus, RiskTreatment, Role } from "@prisma/client";
+import { Plan, PrismaClient, RiskCategory, RiskStatus, RiskTreatment, Role } from "@prisma/client";
 import { hash } from "bcryptjs";
 import { complianceCatalog, linkComplianceToRisk } from "../lib/compliance";
+import { ensureTenantFrameworks, seedFrameworks } from "../lib/frameworks";
 
 const db = new PrismaClient();
 const risks = [
@@ -16,10 +17,15 @@ const risks = [
 
 async function main() {
   const passwordHash = await hash("BeyondBeams2026!", 12);
-  const tenant = await db.tenant.upsert({ where: { slug: "beyondbeams-demo" }, update: {}, create: { name: "BeyondBeams Demo", slug: "beyondbeams-demo" } });
+  const tenant = await db.tenant.upsert({ where: { slug: "beyondbeams-demo" }, update: { plan: Plan.PROFESSIONAL }, create: { name: "BeyondBeams Demo", slug: "beyondbeams-demo", plan: Plan.PROFESSIONAL } });
   const user = await db.user.upsert({ where: { email: "owner@beyondbeams.com" }, update: { passwordHash, tenantId: tenant.id, translatorUses: 0, paidPlan: false }, create: { email: "owner@beyondbeams.com", name: "Maya Chen", passwordHash, tenantId: tenant.id } });
   await db.membership.upsert({ where: { tenantId_userId: { tenantId: tenant.id, userId: user.id } }, update: { role: Role.OWNER, acceptedAt: new Date(), inviteEmail: null, inviteToken: null, inviteExpires: null }, create: { tenantId: tenant.id, userId: user.id, role: Role.OWNER, acceptedAt: new Date() } });
   await db.auditEvent.deleteMany({ where: { tenantId: tenant.id } });
+  await db.exportHistory.deleteMany({ where: { tenantId: tenant.id } });
+  await db.savedReport.deleteMany({ where: { tenantId: tenant.id } });
+  await seedFrameworks();
+  await db.tenantFramework.deleteMany({ where: { tenantId: tenant.id } });
+  await ensureTenantFrameworks(tenant.id);
   await db.emergingRisk.deleteMany({ where: { tenantId: tenant.id } });
   await db.risk.deleteMany({ where: { tenantId: tenant.id } });
   await db.grcRecord.deleteMany({ where: { tenantId: tenant.id } });

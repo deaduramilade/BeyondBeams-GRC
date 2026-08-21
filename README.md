@@ -22,6 +22,8 @@ On Windows PowerShell, use `Copy-Item .env.example .env` instead of `cp`. Open [
 
 The seed creates one demo tenant, one Owner membership, eight realistic sample risks, worldwide compliance references and linkages, workflow examples, and one emerging-risk monitoring case.
 
+Framework mapping is available at `/app/frameworks`. Owners and Risk Managers can enable frameworks; risk writers can search and map enabled controls while creating, editing, or viewing a risk. Free and Basic workspaces have framework and mapping limits, while Professional and Premium workspaces can use all included ISO 27001, NIST CSF 2.0, SOC 2, HIPAA, and fintech controls.
+
 ## Commands
 
 - `npm run dev`: start the development server.

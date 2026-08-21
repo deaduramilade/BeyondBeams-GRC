@@ -25,11 +25,13 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
+    "exceljs": "^4.4.0",
     "framer-motion": "^12.23.12",
     "lucide-react": "^0.539.0",
     "next": "15.5.0",
     "next-auth": "5.0.0-beta.29",
     "next-themes": "^0.4.6",
+    "pdfkit": "^0.19.1",
     "react": "19.1.1",
     "react-dom": "19.1.1",
     "sonner": "^2.0.7",
@@ -39,6 +41,7 @@
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^22.17.2",
+    "@types/pdfkit": "^0.17.6",
     "@types/react": "^19.1.10",
     "@types/react-dom": "^19.1.7",
     "autoprefixer": "^10.4.21",
@@ -48,5 +51,7 @@
     "tsx": "^4.20.4",
     "typescript": "^5.9.2"
   },
-  "prisma": { "seed": "node node_modules/tsx/dist/cli.mjs prisma/seed.ts" }
+  "prisma": {
+    "seed": "node node_modules/tsx/dist/cli.mjs prisma/seed.ts"
+  }
 }
