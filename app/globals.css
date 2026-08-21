@@ -10,3 +10,11 @@
   ::selection { background: #00a896; color: #061a2b; }
 }
 @layer utilities { .text-balance { text-wrap: balance; } }
+
+@layer components {
+  .landing-link { @apply rounded-sm transition-colors duration-200 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00A896] focus-visible:ring-offset-4 focus-visible:ring-offset-[#0A2540]; }
+  .landing-button { @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-md px-5 text-sm font-bold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#00A896]; }
+  .landing-section { @apply mx-auto w-full max-w-7xl px-5 sm:px-8; }
+}
+
+html { scroll-behavior: smooth; }
