@@ -1,0 +1,13 @@
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/actions/risks.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/api/risks/[id]/route.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/api/risks/route.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/app/risks/[id]/edit/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/app/risks/[id]/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/app/risks/new/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'components/app-shell.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'components/risk-form.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'prisma/schema.postgresql.prisma', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'prisma/schema.prisma', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'prisma/seed.ts', LF will be replaced by CRLF the next time Git touches it

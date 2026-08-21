@@ -1,10 +1,12 @@
 generator client {
   provider = "prisma-client-js"
 }
+
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
 enum Role {
   OWNER
   RISK_MANAGER
@@ -12,6 +14,7 @@ enum Role {
   VIEWER
   AUDITOR
 }
+
 enum RiskTreatment {
   ACCEPT
   MITIGATE
@@ -19,6 +22,7 @@ enum RiskTreatment {
   AVOID
   NONE
 }
+
 enum RiskStatus {
   DRAFT
   OPEN
@@ -28,6 +32,7 @@ enum RiskStatus {
   ACCEPTED
   CLOSED
 }
+
 enum RiskCategory {
   CYBERSECURITY
   COMPLIANCE
@@ -39,6 +44,7 @@ enum RiskCategory {
   RESILIENCE
   PRIVACY
 }
+
 enum AuditAction {
   CREATE
   UPDATE
@@ -46,102 +52,128 @@ enum AuditAction {
 }
 
 model Tenant {
-  id String @id @default(cuid())
-  name String
-  slug String @unique
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  users User[]
-  memberships Membership[]
-  risks Risk[]
-  auditEvents AuditEvent[]
+  id                   String                @id @default(cuid())
+  name                 String
+  slug                 String                @unique
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  users                User[]
+  memberships          Membership[]
+  risks                Risk[]
+  auditEvents          AuditEvent[]
+  grcRecords           GrcRecord[]
+  complianceReferences ComplianceReference[]
+  emergingRisks        EmergingRisk[]
 }
+
 model User {
-  id String @id @default(cuid())
-  tenantId String
-  email String @unique
-  name String
-  passwordHash String
-  emailVerified DateTime?
-  image String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  memberships Membership[]
-  ownedRisks Risk[] @relation("RiskOwner")
-  auditEvents AuditEvent[] @relation("AuditActor")
-  accounts Account[]
-  sessions Session[]
+  id             String       @id @default(cuid())
+  tenantId       String
+  email          String       @unique
+  name           String
+  passwordHash   String
+  emailVerified  DateTime?
+  image          String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  tenant         Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  memberships    Membership[]
+  ownedRisks     Risk[]       @relation("RiskOwner")
+  auditEvents    AuditEvent[] @relation("AuditActor")
+  accounts       Account[]
+  sessions       Session[]
+  translatorUses Int          @default(0)
+  paidPlan       Boolean      @default(false)
+
   @@index([tenantId])
   @@index([tenantId, email])
 }
+
 model Account {
-  id String @id @default(cuid())
-  userId String
-  type String
-  provider String
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
   providerAccountId String
-  refresh_token String? @db.Text
-  access_token String? @db.Text
-  expires_at Int?
-  token_type String?
-  scope String?
-  id_token String? @db.Text
-  session_state String?
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@unique([provider, providerAccountId])
   @@index([userId])
 }
+
 model Session {
-  id String @id @default(cuid())
-  sessionToken String @unique
-  userId String
-  expires DateTime
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([userId])
 }
+
 model VerificationToken {
   identifier String
-  token String
-  expires DateTime
+  token      String
+  expires    DateTime
+
   @@unique([identifier, token])
 }
+
 model Membership {
-  id String @id @default(cuid())
-  tenantId String
-  userId String
-  role Role @default(VIEWER)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id            String    @id @default(cuid())
+  tenantId      String
+  userId        String?
+  inviteEmail   String?
+  inviteToken   String?   @unique
+  inviteExpires DateTime?
+  invitedById   String?
+  acceptedAt    DateTime?
+  role          Role      @default(VIEWER)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  tenant        Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user          User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@unique([tenantId, userId])
+  @@unique([tenantId, inviteEmail])
   @@index([tenantId])
   @@index([userId])
+  @@index([inviteEmail])
 }
+
 model Risk {
-  id String @id @default(cuid())
-  tenantId String
-  reference String
-  title String
-  description String
-  category RiskCategory
-  ownerId String
+  id                 String               @id @default(cuid())
+  tenantId           String
+  reference          String
+  title              String
+  description        String
+  category           RiskCategory
+  ownerId            String
   inherentLikelihood Int
-  inherentImpact Int
-  inherentScore Int
+  inherentImpact     Int
+  inherentScore      Int
   residualLikelihood Int?
-  residualImpact Int?
-  residualScore Int?
-  treatment RiskTreatment @default(NONE)
-  status RiskStatus @default(OPEN)
-  nextReviewDate DateTime
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  deletedAt DateTime?
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  owner User @relation("RiskOwner", fields: [ownerId], references: [id])
-  auditEvents AuditEvent[]
+  residualImpact     Int?
+  residualScore      Int?
+  treatment          RiskTreatment        @default(NONE)
+  status             RiskStatus           @default(OPEN)
+  nextReviewDate     DateTime
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+  deletedAt          DateTime?
+  tenant             Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  owner              User                 @relation("RiskOwner", fields: [ownerId], references: [id])
+  auditEvents        AuditEvent[]
+  complianceLinks    RiskComplianceLink[]
+  emergingSource     EmergingRisk?        @relation("PromotedRisk")
+
   @@unique([tenantId, reference])
   @@index([tenantId])
   @@index([tenantId, deletedAt])
@@ -149,20 +181,97 @@ model Risk {
   @@index([tenantId, residualScore])
   @@index([ownerId])
 }
+
+model GrcRecord {
+  id          String    @id @default(cuid())
+  tenantId    String
+  module      String
+  title       String
+  status      String
+  owner       String
+  dueDate     DateTime?
+  priority    String
+  details     String    @db.Text
+  outcome     String    @db.Text
+  createdById String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, module])
+}
+
+model ComplianceReference {
+  id           String               @id @default(cuid())
+  tenantId     String
+  framework    String
+  jurisdiction String
+  reference    String
+  title        String
+  excerpt      String               @db.Text
+  metric       String?
+  sourceUrl    String
+  categories   String
+  keywords     String
+  industry     String
+  createdAt    DateTime             @default(now())
+  tenant       Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  riskLinks    RiskComplianceLink[]
+
+  @@unique([tenantId, framework, reference])
+  @@index([tenantId, framework])
+}
+
+model RiskComplianceLink {
+  id          String              @id @default(cuid())
+  riskId      String
+  referenceId String
+  rationale   String
+  createdAt   DateTime            @default(now())
+  risk        Risk                @relation(fields: [riskId], references: [id], onDelete: Cascade)
+  reference   ComplianceReference @relation(fields: [referenceId], references: [id], onDelete: Cascade)
+
+  @@unique([riskId, referenceId])
+  @@index([riskId])
+}
+
+model EmergingRisk {
+  id                 String    @id @default(cuid())
+  tenantId           String
+  title              String
+  hypothesis         String    @db.Text
+  indicators         String    @db.Text
+  cadence            String
+  horizon            String
+  status             String    @default("MONITORING")
+  ownerId            String
+  nextReviewDate     DateTime
+  settlementDecision String?   @db.Text
+  settledAt          DateTime?
+  promotedRiskId     String?   @unique
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  tenant             Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  promotedRisk       Risk?     @relation("PromotedRisk", fields: [promotedRiskId], references: [id])
+
+  @@index([tenantId, status])
+}
+
 model AuditEvent {
-  id String @id @default(cuid())
-  tenantId String
-  riskId String?
-  actorId String
-  action AuditAction
-  entityType String @default("Risk")
-  entityId String
-  summary String
-  changes Json?
-  createdAt DateTime @default(now())
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  risk Risk? @relation(fields: [riskId], references: [id], onDelete: SetNull)
-  actor User @relation("AuditActor", fields: [actorId], references: [id])
+  id         String      @id @default(cuid())
+  tenantId   String
+  riskId     String?
+  actorId    String
+  action     AuditAction
+  entityType String      @default("Risk")
+  entityId   String
+  summary    String
+  changes    Json?
+  createdAt  DateTime    @default(now())
+  tenant     Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  risk       Risk?       @relation(fields: [riskId], references: [id], onDelete: SetNull)
+  actor      User        @relation("AuditActor", fields: [actorId], references: [id])
+
   @@index([tenantId])
   @@index([tenantId, entityId])
   @@index([riskId])
