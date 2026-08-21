@@ -64,3 +64,5 @@ temp/
 *.pfx
 reports/generated/
 uploads/
+/.clinerules
+/.github
