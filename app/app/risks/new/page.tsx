@@ -1,5 +1,15 @@
 import { db } from "@/lib/db";
-import { requireSession } from "@/lib/authz";
+import { requireRole, writeRoles } from "@/lib/authz";
 import { PageHeader } from "@/components/page-header";
 import { RiskForm } from "@/components/risk-form";
-export default async function NewRiskPage() { const session = await requireSession(); const users = await db.user.findMany({ where: { tenantId: session.user.tenantId }, select: { id: true, name: true } }); return <><PageHeader eyebrow="Risk register" title="Add a new risk" description="Describe the uncertain event, assess its initial exposure, and assign clear accountability."/><RiskForm users={users}/></>; }
+import { ensureComplianceCatalog } from "@/lib/compliance";
+
+export default async function NewRiskPage() {
+  const session = await requireRole(writeRoles);
+  await ensureComplianceCatalog(session.user.tenantId);
+  const [users, references] = await Promise.all([
+    db.user.findMany({ where: { tenantId: session.user.tenantId }, select: { id: true, name: true } }),
+    db.complianceReference.findMany({ where: { tenantId: session.user.tenantId }, orderBy: { framework: "asc" } }),
+  ]);
+  return <><PageHeader eyebrow="Risk register" title="Add a new risk" description="Describe the uncertain event, assess its initial exposure, and review worldwide obligations in context."/><RiskForm users={users} references={references}/></>;
+}
