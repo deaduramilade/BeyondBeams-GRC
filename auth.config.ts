@@ -8,8 +8,9 @@ export const authConfig = {
       const path = request.nextUrl.pathname;
       if (!path.startsWith("/app")) return true;
       if (!session) return false;
-      const mutationPage = path === "/app/risks/new" || /^\/app\/risks\/[^/]+\/edit$/.test(path);
-      return mutationPage ? ["OWNER", "RISK_MANAGER", "ASSESSOR"].includes(session.user.role) : true;
+      // Mutation authorization is enforced by the server actions and API routes,
+      // where the complete tenant-scoped session is available.
+      return true;
     },
   },
 } satisfies NextAuthConfig;
