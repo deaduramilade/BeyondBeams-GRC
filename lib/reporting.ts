@@ -64,3 +64,15 @@ export async function boardPdf(tenantId: string) {
   doc.addPage(); doc.fillColor("#0A2540").fontSize(20).text("Treatment and emerging risks", 48, 52); doc.fillColor("#374151").fontSize(11).text(`Treatment progress: ${treated}/${risks.length} risks carry a defined mitigation, transfer, avoidance, or acceptance decision. Open and in-review items should remain on the management agenda until an owner confirms the next dated action.`, 48, 90, { width: 490, lineGap: 5 }); doc.fillColor("#00A896").fontSize(12).text("EMERGING RISKS", 48, 170); y = 198; emerging.forEach((risk) => { doc.fillColor("#0A2540").fontSize(11).text(risk.title, 48, y); doc.fillColor("#6B7280").fontSize(9).text(`${formatEnum(risk.status)}  |  Review ${risk.nextReviewDate.toLocaleDateString()}`, 48, y + 16); y += 44; });
   doc.end(); await new Promise<void>((resolve) => doc.on("end", resolve)); return Buffer.concat(chunks);
 }
+
+export async function gapAnalysisPdf(tenantId: string) {
+  const [tenant, selections] = await Promise.all([
+    db.tenant.findUniqueOrThrow({ where: { id: tenantId }, select: { name: true } }),
+    db.tenantFramework.findMany({ where: { tenantId, enabled: true }, include: { framework: { include: { controls: { include: { mappings: { where: { risk: { tenantId, deletedAt: null } } } } } } } }, orderBy: { framework: { name: "asc" } } }),
+  ]);
+  const doc = new PDFDocument({ size: "A4", margin: 48 }); const chunks: Buffer[] = []; const stream = doc as PDFKit.PDFDocument & { on: (event: string, callback: (chunk: Buffer) => void) => void }; stream.on("data", (chunk) => chunks.push(chunk));
+  doc.fillColor("#0A2540").rect(0, 0, 595, 120).fill(); doc.fillColor("#FFFFFF").fontSize(11).text("BEYONDBEAMS GRC", 48, 38); doc.fontSize(27).text("Framework gap analysis", 48, 60); doc.fontSize(10).fillColor("#A9EDE5").text(`${tenant.name}  |  ${new Date().toLocaleDateString("en-US", { dateStyle: "long" })}`, 48, 94);
+  let y = 150; for (const selection of selections) { const controls = selection.framework.controls; const mapped = controls.filter((control) => control.mappings.length > 0).length; if (y > 690) { doc.addPage(); y = 52; } doc.fillColor("#0A2540").fontSize(17).text(selection.framework.name, 48, y); doc.fillColor("#00A896").fontSize(10).text(`${mapped}/${controls.length} controls mapped`, 48, y + 24); y += 54; for (const control of controls.filter((item) => item.mappings.length === 0)) { if (y > 740) { doc.addPage(); y = 52; } doc.fillColor("#0A2540").fontSize(9).text(`${control.controlId}  ${control.title}`, 58, y, { width: 470 }); y += 20; } y += 18; }
+  if (!selections.length) doc.fillColor("#374151").fontSize(12).text("No frameworks are enabled for this workspace.", 48, 160);
+  doc.end(); await new Promise<void>((resolve) => doc.on("end", resolve)); return Buffer.concat(chunks);
+}

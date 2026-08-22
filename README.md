@@ -38,7 +38,22 @@ Local development uses `prisma/schema.prisma` with SQLite. `prisma/schema.postgr
 
 Auth.js v5 provides secure JWT sessions, email/password registration and login, and short-lived, single-use magic links. First registration creates an isolated organisation and Owner membership atomically. Magic-link and invitation tokens are SHA-256 hashed at rest. Set a strong `AUTH_SECRET` outside local development.
 
-Owners and Risk Managers can invite members from `/app/roles` and assign Owner, Risk Manager, Assessor, Viewer, or Auditor. Pending memberships expire after seven days and activate only when the invited email accepts the token. Local development prints complete invitation and magic-link URLs to the server console and exposes the local invitation link after submission. Replace `deliverLink` in `lib/tokens.ts` with a transactional email provider for production delivery.
+Owners and Risk Managers can invite members from `/app/roles` and assign Owner, Risk Manager, Assessor, Viewer, or Auditor. Pending memberships expire after seven days and activate only when the invited email accepts the token. Invitation emails include the organisation, role, expiry, and single-use acceptance link. Expired and accepted links show a clear recovery state.
+
+## Email notifications
+
+Local development defaults to `EMAIL_PROVIDER=preview` and never requires SMTP or provider credentials. Every rendered email is written to the tenant-scoped `Notification` audit table, printed in full to the server console, and includes an `/email-preview/...` browser link. Production can use Resend by setting `EMAIL_PROVIDER=resend`, `RESEND_API_KEY`, and a verified `EMAIL_FROM`; secrets must remain outside source control.
+
+Owners configure review reminders under `/app/settings`; users can disable review, assignment, or export email categories there. The default review cadence is 7 days before, 1 day before, and the due/overdue day. Free workspaces use that default cadence; custom cadence requires Basic or higher. Reminder dispatch is idempotent and includes formal and emerging risks:
+
+```bash
+curl -X POST http://localhost:3000/api/notifications/review-reminders
+node scripts/verify-notifications.cjs
+```
+
+Set `NOTIFICATION_CRON_SECRET` in shared environments and call the endpoint with `Authorization: Bearer <secret>`. Schedule it daily with the deployment platform. To test upcoming and overdue reminders, set a risk and an emerging risk review date to today, tomorrow, or seven days from today, invoke the endpoint, then open the preview URLs printed by the dev server.
+
+The Settings page can email a Board PDF, Excel/CSV risk register, or audit export to up to ten recipients. Delivery uses the existing export quota check before generation, stores the generated artifact against its tenant export record, and sends a random 24-hour download link. Risk creation/update, structured action assignment, and emerging-risk settlement also send preference-aware lifecycle emails. Every delivery attempt is retained with status, recipient, type, related entity, provider, and timestamp; each domain notification also has a corresponding audit event.
 
 All risk and audit operations derive `tenantId` from the authenticated server session. Owner, Risk Manager, and Assessor roles may create or edit risks; Owner and Risk Manager may delete; Viewer and Auditor are read-only. Deletes are soft deletes and create audit events.
 
@@ -46,4 +61,4 @@ The public landing page is `/`. Authenticated tools are under `/app`; risk creat
 
 ## Production notes
 
-Before production, configure PostgreSQL, a transactional email provider, managed secrets, HTTPS, database migrations, backups, monitoring, and rate limiting. The included console delivery and seed password are development conveniences.
+Before production, configure PostgreSQL, a transactional email provider, managed secrets, HTTPS, database migrations, backups, monitoring, rate limiting, and a daily authenticated reminder schedule. Database-backed report artifacts are suitable for this local implementation; production deployments should move larger files to tenant-scoped object storage while retaining hashed expiry tokens and audit records.

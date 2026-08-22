@@ -61,6 +61,7 @@ enum Plan {
 enum ReportType {
   RISK_REGISTER
   BOARD_REPORT
+  GAP_ANALYSIS
   AUDIT_TRAIL
 }
 
@@ -77,52 +78,53 @@ enum ExportStatus {
 }
 
 model Tenant {
-  id                   String                @id @default(cuid())
-  name                 String
-  slug                 String                @unique
-  createdAt            DateTime              @default(now())
-  updatedAt            DateTime              @updatedAt
-  users                User[]
-  memberships          Membership[]
-  risks                Risk[]
-  auditEvents          AuditEvent[]
-  grcRecords           GrcRecord[]
-  complianceReferences ComplianceReference[]
-  emergingRisks        EmergingRisk[]
-  plan                 Plan                  @default(FREE)
-  exports              ExportHistory[]
-  savedReports         SavedReport[]
-  frameworkSelections  TenantFramework[]
-  reviewRemindersEnabled Boolean             @default(true)
-  reviewReminderCadence String              @default("7,1,0")
-  notifications         Notification[]
+  id                     String                @id @default(cuid())
+  name                   String
+  slug                   String                @unique
+  createdAt              DateTime              @default(now())
+  updatedAt              DateTime              @updatedAt
+  users                  User[]
+  memberships            Membership[]
+  risks                  Risk[]
+  auditEvents            AuditEvent[]
+  grcRecords             GrcRecord[]
+  complianceReferences   ComplianceReference[]
+  emergingRisks          EmergingRisk[]
+  plan                   Plan                  @default(FREE)
+  exports                ExportHistory[]
+  savedReports           SavedReport[]
+  frameworkSelections    TenantFramework[]
+  reviewRemindersEnabled Boolean               @default(true)
+  reviewReminderCadence  String                @default("7,1,0")
+  notifications          Notification[]
 }
 
 model User {
-  id               String          @id @default(cuid())
-  tenantId         String
-  email            String          @unique
-  name             String
-  passwordHash     String
-  emailVerified    DateTime?
-  image            String?
-  createdAt        DateTime        @default(now())
-  updatedAt        DateTime        @updatedAt
-  tenant           Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  memberships      Membership[]
-  ownedRisks       Risk[]          @relation("RiskOwner")
-  auditEvents      AuditEvent[]    @relation("AuditActor")
-  accounts         Account[]
-  sessions         Session[]
-  translatorUses   Int             @default(0)
-  paidPlan         Boolean         @default(false)
-  generatedExports ExportHistory[]
-  savedReports     SavedReport[]
-  riskMappings     RiskFrameworkMapping[]
-  reviewEmailsEnabled Boolean             @default(true)
-  assignmentEmailsEnabled Boolean         @default(true)
-  exportEmailsEnabled Boolean             @default(true)
-  notifications    Notification[]
+  id                      String                 @id @default(cuid())
+  tenantId                String
+  email                   String                 @unique
+  name                    String
+  passwordHash            String
+  emailVerified           DateTime?
+  image                   String?
+  createdAt               DateTime               @default(now())
+  updatedAt               DateTime               @updatedAt
+  tenant                  Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  memberships             Membership[]
+  ownedRisks              Risk[]                 @relation("RiskOwner")
+  ownedEmergingRisks EmergingRisk[] @relation("EmergingRiskOwner")
+  auditEvents             AuditEvent[]           @relation("AuditActor")
+  accounts                Account[]
+  sessions                Session[]
+  translatorUses          Int                    @default(0)
+  paidPlan                Boolean                @default(false)
+  generatedExports        ExportHistory[]
+  savedReports            SavedReport[]
+  riskMappings            RiskFrameworkMapping[]
+  reviewEmailsEnabled     Boolean                @default(true)
+  assignmentEmailsEnabled Boolean                @default(true)
+  exportEmailsEnabled     Boolean                @default(true)
+  notifications           Notification[]
 
   @@index([tenantId])
   @@index([tenantId, email])
@@ -188,7 +190,7 @@ model Membership {
 }
 
 model Risk {
-  id                 String               @id @default(cuid())
+  id                 String                 @id @default(cuid())
   tenantId           String
   reference          String
   title              String
@@ -201,18 +203,18 @@ model Risk {
   residualLikelihood Int?
   residualImpact     Int?
   residualScore      Int?
-  treatment          RiskTreatment        @default(NONE)
-  status             RiskStatus           @default(OPEN)
+  treatment          RiskTreatment          @default(NONE)
+  status             RiskStatus             @default(OPEN)
   nextReviewDate     DateTime
-  createdAt          DateTime             @default(now())
-  updatedAt          DateTime             @updatedAt
+  createdAt          DateTime               @default(now())
+  updatedAt          DateTime               @updatedAt
   deletedAt          DateTime?
-  tenant             Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  owner              User                 @relation("RiskOwner", fields: [ownerId], references: [id])
+  tenant             Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  owner              User                   @relation("RiskOwner", fields: [ownerId], references: [id])
   auditEvents        AuditEvent[]
   complianceLinks    RiskComplianceLink[]
-  emergingSource     EmergingRisk?        @relation("PromotedRisk")
-  frameworkMappings   RiskFrameworkMapping[]
+  emergingSource     EmergingRisk?          @relation("PromotedRisk")
+  frameworkMappings  RiskFrameworkMapping[]
 
   @@unique([tenantId, reference])
   @@index([tenantId])
@@ -223,26 +225,27 @@ model Risk {
 }
 
 model Framework {
-  id             String           @id @default(cuid())
-  name           String           @unique
-  version        String
-  description    String
-  industryTags   String
-  controls       FrameworkControl[]
+  id               String             @id @default(cuid())
+  name             String             @unique
+  version          String
+  description      String
+  industryTags     String
+  controls         FrameworkControl[]
   tenantSelections TenantFramework[]
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+
   @@index([name])
 }
 
 model FrameworkControl {
-  id          String        @id @default(cuid())
+  id          String                 @id @default(cuid())
   frameworkId String
   controlId   String
   title       String
   description String
   category    String
-  framework   Framework     @relation(fields: [frameworkId], references: [id], onDelete: Cascade)
+  framework   Framework              @relation(fields: [frameworkId], references: [id], onDelete: Cascade)
   mappings    RiskFrameworkMapping[]
 
   @@unique([frameworkId, controlId])
@@ -252,12 +255,12 @@ model FrameworkControl {
 }
 
 model TenantFramework {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   tenantId    String
   frameworkId String
-  enabled     Boolean  @default(true)
-  enabledAt   DateTime @default(now())
-  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  enabled     Boolean   @default(true)
+  enabledAt   DateTime  @default(now())
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   framework   Framework @relation(fields: [frameworkId], references: [id], onDelete: Cascade)
 
   @@unique([tenantId, frameworkId])
@@ -265,15 +268,15 @@ model TenantFramework {
 }
 
 model RiskFrameworkMapping {
-  id                 String          @id @default(cuid())
+  id                 String           @id @default(cuid())
   riskId             String
   frameworkControlId String
   mappedBy           String
-  mappedAt           DateTime        @default(now())
+  mappedAt           DateTime         @default(now())
   notes              String?
-  risk               Risk            @relation(fields: [riskId], references: [id], onDelete: Cascade)
+  risk               Risk             @relation(fields: [riskId], references: [id], onDelete: Cascade)
   frameworkControl   FrameworkControl @relation(fields: [frameworkControlId], references: [id], onDelete: Cascade)
-  mapper             User            @relation(fields: [mappedBy], references: [id])
+  mapper             User             @relation(fields: [mappedBy], references: [id])
 
   @@unique([riskId, frameworkControlId])
   @@index([riskId])
@@ -351,6 +354,7 @@ model EmergingRisk {
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
   tenant             Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  owner              User      @relation("EmergingRiskOwner", fields: [ownerId], references: [id])
   promotedRisk       Risk?     @relation("PromotedRisk", fields: [promotedRiskId], references: [id])
 
   @@index([tenantId, status])
@@ -378,20 +382,20 @@ model AuditEvent {
 }
 
 model ExportHistory {
-  id            String       @id @default(cuid())
-  tenantId      String
-  generatedById String
-  reportType    ReportType
-  format        ExportFormat
-  fileName      String
-  status        ExportStatus @default(PROCESSING)
-  createdAt     DateTime     @default(now())
-  completedAt   DateTime?
-  tenant        Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  generatedBy   User         @relation(fields: [generatedById], references: [id], onDelete: Cascade)
-  artifactBase64 String?
-  downloadTokenHash String?   @unique
-  downloadExpires DateTime?
+  id                String       @id @default(cuid())
+  tenantId          String
+  generatedById     String
+  reportType        ReportType
+  format            ExportFormat
+  fileName          String
+  status            ExportStatus @default(PROCESSING)
+  createdAt         DateTime     @default(now())
+  completedAt       DateTime?
+  tenant            Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  generatedBy       User         @relation(fields: [generatedById], references: [id], onDelete: Cascade)
+  artifactBase64    String?
+  downloadTokenHash String?      @unique
+  downloadExpires   DateTime?
 
   @@index([tenantId, createdAt])
   @@index([tenantId, status, createdAt])
@@ -399,21 +403,24 @@ model ExportHistory {
 }
 
 model Notification {
-  id           String   @id @default(cuid())
-  tenantId     String
-  recipient    String
-  type         String
+  id                String   @id @default(cuid())
+  tenantId          String
+  recipient         String
+  type              String
   relatedEntityType String?
-  relatedEntityId String?
-  subject      String
-  status       String   @default("SENT")
-  provider     String   @default("local-preview")
-  dedupeKey    String?  @unique
-  sentAt       DateTime @default(now())
-  createdAt    DateTime @default(now())
-  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  user         User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
-  userId       String?
+  relatedEntityId   String?
+  subject           String
+  htmlBody          String
+  textBody          String
+  status            String   @default("SENT")
+  provider          String   @default("local-preview")
+  dedupeKey         String?  @unique
+  previewTokenHash  String?  @unique
+  sentAt            DateTime @default(now())
+  createdAt         DateTime @default(now())
+  tenant            Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user              User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userId            String?
 
   @@index([tenantId, type, createdAt])
   @@index([tenantId, recipient])
