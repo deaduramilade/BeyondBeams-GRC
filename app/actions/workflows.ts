@@ -7,6 +7,9 @@ import { db } from "@/lib/db";
 import { requireRole, writeRoles } from "@/lib/authz";
 import { isModuleSlug } from "@/lib/modules";
 import { linkComplianceToRisk } from "@/lib/compliance";
+import { appUrl } from "@/lib/tokens";
+import { sendNotificationEmail } from "@/lib/email";
+import { notifyEmergingSettlement } from "@/lib/lifecycle-notifications";
 
 const recordSchema = z.object({ module: z.string(), title: z.string().trim().min(3).max(140), owner: z.string().trim().min(2).max(100), status: z.string().trim().min(2).max(40), priority: z.string().trim().min(2).max(20), dueDate: z.coerce.date().nullable(), details: z.string().trim().min(10).max(5000), outcome: z.string().trim().min(10).max(3000) });
 
@@ -15,6 +18,8 @@ export async function createGrcRecord(input: z.input<typeof recordSchema>) {
   if (!parsed.success || !isModuleSlug(parsed.data.module)) return { error: parsed.success ? "Unknown GRC module." : parsed.error.issues[0]?.message ?? "Invalid record." };
   const record = await db.grcRecord.create({ data: { ...parsed.data, tenantId: session.user.tenantId, createdById: session.user.id } });
   await db.auditEvent.create({ data: { tenantId: session.user.tenantId, actorId: session.user.id, action: "CREATE", entityType: parsed.data.module, entityId: record.id, summary: `Created ${parsed.data.module} record: ${record.title}` } });
+  const assignee = await db.user.findFirst({ where: { tenantId: session.user.tenantId, OR: [{ name: parsed.data.owner }, { email: parsed.data.owner.toLowerCase() }] }, select: { id: true, email: true, assignmentEmailsEnabled: true } });
+  if (assignee?.assignmentEmailsEnabled) await sendNotificationEmail({ tenantId: session.user.tenantId, userId: assignee.id, recipient: assignee.email, type: "ACTION_ASSIGNED", subject: `Action assigned: ${record.title}`, eyebrow: "Action assignment", heading: "A GRC action needs your attention", paragraphs: [`You have been named accountable owner for “${record.title}”.`, parsed.data.dueDate ? `Due date: ${parsed.data.dueDate.toLocaleDateString("en-US", { dateStyle: "long" })}.` : "No due date was set."], cta: { label: "Open workspace", url: `${appUrl()}/app/${parsed.data.module}` }, details: [{ label: "Priority", value: parsed.data.priority }, { label: "Status", value: parsed.data.status }], relatedEntityType: parsed.data.module, relatedEntityId: record.id });
   revalidatePath(`/app/${parsed.data.module}`); return { success: true };
 }
 
@@ -31,6 +36,7 @@ export async function settleEmergingRisk(id: string, decision: string, promote: 
   let promotedRiskId: string | undefined;
   if (promote) { const count = await db.risk.count({ where: { tenantId: session.user.tenantId } }); const risk = await db.risk.create({ data: { tenantId: session.user.tenantId, reference: `RSK-${String(count + 1).padStart(4,"0")}`, title: item.title, description: item.hypothesis, category: "STRATEGIC", ownerId: item.ownerId, inherentLikelihood: 3, inherentImpact: 3, inherentScore: 9, treatment: "NONE", status: "IN_REVIEW", nextReviewDate: item.nextReviewDate } }); await linkComplianceToRisk(risk); promotedRiskId = risk.id; }
   await db.emergingRisk.update({ where: { id }, data: { status: promote ? "PROMOTED" : "SETTLED", settlementDecision: decision, settledAt: new Date(), promotedRiskId } });
+  await notifyEmergingSettlement(item, promote);
   await db.auditEvent.create({ data: { tenantId: session.user.tenantId, actorId: session.user.id, action: "UPDATE", entityType: "EmergingRisk", entityId: id, summary: promote ? `Promoted emerging risk into the formal register` : `Settled emerging risk without promotion`, changes: decision } }); revalidatePath("/app/emerging-risks"); revalidatePath("/app/risks"); return { success: true };
 }
 
