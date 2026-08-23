@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import type { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { requireRole, writeRoles } from "@/lib/authz";
 import { PageHeader } from "@/components/page-header";
@@ -18,5 +19,5 @@ export default async function EditRiskPage({ params }: { params: Promise<{ id: s
     enabledControls(session.user.tenantId),
   ]);
   if (!risk) notFound();
-  return <><PageHeader eyebrow={risk.reference} title="Edit risk" description="Update the assessment and review the obligations triggered by its scope."/><RiskForm users={users} references={references} controls={controls} mappedControlIds={risk.frameworkMappings.map((mapping) => mapping.frameworkControlId)} risk={{ ...risk, nextReviewDate: risk.nextReviewDate.toISOString().slice(0, 10) }}/></>;
+  return <><PageHeader eyebrow={risk.reference} title="Edit risk" description="Update the assessment and review the obligations triggered by its scope."/><RiskForm users={users} references={references} controls={controls} mappedControlIds={risk.frameworkMappings.map((mapping: Prisma.RiskFrameworkMappingGetPayload<{ select: { frameworkControlId: true } }>) => mapping.frameworkControlId)} risk={{ ...risk, nextReviewDate: risk.nextReviewDate.toISOString().slice(0, 10) }}/></>;
 }

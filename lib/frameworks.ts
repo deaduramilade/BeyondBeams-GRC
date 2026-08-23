@@ -35,13 +35,31 @@ export const frameworkCatalog = [
 ] as const;
 
 export const planFrameworkLimit: Record<Plan, number> = { FREE: 1, BASIC: 2, PROFESSIONAL: 5, PREMIUM: 5 };
+export const planMappingLimit: Record<Plan, number> = { FREE: 25, BASIC: 100, PROFESSIONAL: Number.POSITIVE_INFINITY, PREMIUM: Number.POSITIVE_INFINITY };
 export function canManageFramework(role: Role) { return role === Role.OWNER || role === Role.RISK_MANAGER; }
 export async function seedFrameworks() { for (const item of frameworkCatalog) { const framework = await db.framework.upsert({ where: { name: item.name }, update: { version: item.version, description: item.description, industryTags: item.industryTags }, create: { name: item.name, version: item.version, description: item.description, industryTags: item.industryTags } }); for (const [controlId, title, description, category] of item.controls) await db.frameworkControl.upsert({ where: { frameworkId_controlId: { frameworkId: framework.id, controlId } }, update: { title, description, category }, create: { frameworkId: framework.id, controlId, title, description, category } }); } }
+export async function ensureTenantFrameworks(tenantId: string) {
+  const frameworks = await db.framework.findMany({ select: { id: true } });
+  await Promise.all(frameworks.map(({ id: frameworkId }) => db.tenantFramework.upsert({
+    where: { tenantId_frameworkId: { tenantId, frameworkId } },
+    update: {},
+    create: { tenantId, frameworkId, enabled: false },
+  })));
+}
 export async function enabledFrameworks(tenantId: string) {
   return db.framework.findMany({
     where: {
       tenantSelections: { some: { tenantId, enabled: true } },
     },
     include: { controls: true },
+  });
+}
+export async function enabledControls(tenantId: string) {
+  return db.frameworkControl.findMany({
+    where: {
+      framework: { tenantSelections: { some: { tenantId, enabled: true } } },
+    },
+    include: { framework: true },
+    orderBy: [{ framework: { name: "asc" } }, { controlId: "asc" }],
   });
 }
