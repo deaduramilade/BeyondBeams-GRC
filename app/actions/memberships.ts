@@ -7,10 +7,12 @@ import { db } from "@/lib/db";
 import { requireRole } from "@/lib/authz";
 import { appUrl, createToken, hashToken } from "@/lib/tokens";
 import { sendNotificationEmail } from "@/lib/email";
+import { enforceRateLimit } from "@/lib/rate-limit";
 
 const inviteSchema = z.object({ email: z.string().trim().email().transform((value) => value.toLowerCase()), role: z.nativeEnum(Role) });
 export async function inviteMember(input: z.input<typeof inviteSchema>) {
   const session = await requireRole([Role.OWNER, Role.RISK_MANAGER]); const parsed = inviteSchema.safeParse(input); if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Check the invitation." };
+  const limit = await enforceRateLimit("invitation", `${session.user.tenantId}:${parsed.data.email}`); if (!limit.allowed) return { error: "Too many invitations for this address. Please try again later." };
   const existingUser = await db.user.findUnique({ where: { email: parsed.data.email }, include: { memberships: true } });
   if (existingUser?.memberships.some((membership) => membership.tenantId === session.user.tenantId && membership.acceptedAt)) return { error: "This person is already a member." };
   if (existingUser && existingUser.tenantId !== session.user.tenantId) return { error: "This email belongs to another workspace and cannot be invited." };

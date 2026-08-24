@@ -99,6 +99,15 @@ model Tenant {
   notifications          Notification[]
 }
 
+model RateLimitBucket {
+  key         String   @id
+  count       Int      @default(0)
+  windowStart DateTime
+  expiresAt   DateTime
+
+  @@index([expiresAt])
+}
+
 model User {
   id                      String                 @id @default(cuid())
   tenantId                String

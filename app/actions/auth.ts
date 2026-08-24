@@ -5,12 +5,14 @@ import { Prisma, Role } from "@prisma/client";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { appUrl, createToken, deliverLink, hashToken } from "@/lib/tokens";
+import { enforceRateLimit } from "@/lib/rate-limit";
 
 const password = z.string().min(10, "Use at least 10 characters.").max(72);
 const registrationSchema = z.object({ name: z.string().trim().min(2).max(80), email: z.string().trim().email().transform((value) => value.toLowerCase()), organisation: z.string().trim().min(2).max(100), password });
 function slugBase(value: string) { return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 42) || "workspace"; }
 
 export async function registerAccount(input: z.input<typeof registrationSchema>) {
+  const limit = await enforceRateLimit("registration", String(input.email ?? "unknown")); if (!limit.allowed) return { error: "Too many registration attempts. Please try again later." };
   const parsed = registrationSchema.safeParse(input); if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Check your details." };
   if (await db.user.findUnique({ where: { email: parsed.data.email }, select: { id: true } })) return { error: "An account already exists for this email." };
   const passwordHash = await hash(parsed.data.password, 12); const slug = `${slugBase(parsed.data.organisation)}-${createToken().slice(0, 7).toLowerCase()}`;
@@ -22,6 +24,7 @@ export async function registerAccount(input: z.input<typeof registrationSchema>)
 
 const emailSchema = z.string().trim().email().transform((value) => value.toLowerCase());
 export async function requestMagicLink(rawEmail: string) {
+  const limit = await enforceRateLimit("magicLink", rawEmail); if (!limit.allowed) return { error: "Too many requests. Please try again later." };
   const parsed = emailSchema.safeParse(rawEmail); if (!parsed.success) return { error: "Enter a valid email address." };
   if (await db.user.findUnique({ where: { email: parsed.data }, select: { id: true } })) { const token = createToken(); const identifier = `magic:${parsed.data}`; await db.$transaction([db.verificationToken.deleteMany({ where: { identifier } }), db.verificationToken.create({ data: { identifier, token: hashToken(token), expires: new Date(Date.now() + 15 * 60 * 1000) } })]); deliverLink("magic link", parsed.data, `${appUrl()}/magic-link?token=${encodeURIComponent(token)}&email=${encodeURIComponent(parsed.data)}`); }
   return { success: true, message: "If an account exists, a sign-in link has been sent. In local development, use the local email preview flow." };
