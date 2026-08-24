@@ -23,6 +23,6 @@ The former `frontend/` Vite and `backend/` FastAPI directories remain as migrati
 - Material risk changes require audit events; deletion remains soft.
 - Never claim a build or test passed without command output.
 
-## Verification status (2026-08-17)
+## Verification status (2026-08-24)
 
-Implementation is complete and verified. Prisma schema validation, client generation, SQLite creation, demo seeding, strict TypeScript checking, and the Next.js production build pass. The seeded database contains one tenant, one user, eight risks, and eight audit events. Live HTTP smoke tests passed for the branded login, anonymous redirect, credentials authentication, dashboard, and seeded risk register. The server is running on port 3001 because port 3000 was already occupied.
+The release-foundation branch includes environment validation, fail-closed production checks, security headers/CSP, timing-safe secret comparison, HMAC-keyed database-backed rate limiting, PostgreSQL validation/migration scaffolding, CI, focused tests, and responsive/authentication accessibility improvements. Final verification must be recorded from the current commit; hosted deployment, PostgreSQL migration rehearsal, authenticated browser checks, and production operations remain outstanding. See `docs/RELEASE_STATUS.md`.

@@ -1,6 +1,8 @@
 # BeyondBeams GRC
 
-BeyondBeams GRC is a multi-tenant risk register and assessment workspace built with Next.js 15, strict TypeScript, Auth.js, Prisma, Tailwind CSS, shadcn/ui, Radix UI, and SQLite for zero-setup local development.
+BeyondBeams GRC is a multi-tenant risk register and assessment workspace built with Next.js 15, strict TypeScript, Auth.js, Prisma, Tailwind CSS, shadcn/ui, Radix UI, and SQLite for zero-setup local development. PostgreSQL is the canonical production database.
+
+Current release progress is tracked in [docs/RELEASE_STATUS.md](docs/RELEASE_STATUS.md). The application is suitable for controlled local assessment and staging preparation; it is not yet approved for real customer data.
 
 ## Local setup
 
@@ -58,4 +60,4 @@ The public landing page is `/`. Authenticated tools are under `/app`; risk creat
 
 ## Production notes
 
-Before production, configure PostgreSQL, a transactional email provider, managed secrets, HTTPS, database migrations, backups, monitoring, rate limiting, and a daily authenticated reminder schedule. Database-backed report artifacts are suitable for this local implementation; production deployments should move larger files to tenant-scoped object storage while retaining hashed expiry tokens and audit records.
+Before production, configure PostgreSQL, a transactional email provider, managed secrets, HTTPS, database migrations, backups, monitoring, rate limiting, and a daily authenticated reminder schedule. `npm run db:migrate:deploy` is the production migration command. Database-backed report artifacts are suitable for local assessment only; production deployments should move files to tenant-scoped object storage while retaining hashed expiry tokens and audit records. See [docs/OPERATIONS.md](docs/OPERATIONS.md) and [docs/RELEASE_STATUS.md](docs/RELEASE_STATUS.md).

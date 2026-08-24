@@ -1,14 +1,18 @@
 # Delivery Roadmap
-## Completed — Product slice for local review
-- Responsive Northstar workspace with overview, register, heat map, treatments, and report center.
-- Backend Pydantic domain contracts for risks, separate inherent/residual assessments, controls, actions, audit events, metrics, heat-map cells, and report summaries.
-- API-backed register workflow with local seeded repository fallback, server-authoritative scoring, validation, filtering, CSV export, and reconciliation tests.
-- Documentation and feature branch prepared for deployment work.
+## Completed — Next.js release foundation
+- Multi-tenant Next.js application with Auth.js, Prisma, tenant-scoped risk workflows, framework mappings, reports, notifications, and audit events.
+- Responsive application shell and accessible login/mobile interaction improvements.
+- Production fail-closed environment checks, security headers/CSP, timing-safe secrets, HMAC-keyed database-backed rate limiting, and authenticated cron protection.
+- PostgreSQL schema and initial migration scaffolding, SQLite local setup, CI workflow, focused release-foundation tests, and release documentation.
+
+## Current gate — staging preparation
+- Verify typecheck, lint, tests, Prisma validation, production build, and whitespace checks on the current branch.
+- Deploy the PostgreSQL migration to a disposable database and seed only non-production assessment data.
+- Add tenant-isolation/permission integration tests and authenticated browser checks.
 
 ## Deployment gate — Trusted data foundation
-- Replace `RiskStore` with PostgreSQL repository and migrations for workspaces, risks, assessments, treatments, users, and audit events.
 - Add transaction boundaries, tenant filters, cursor pagination, idempotency, and migration/rollback rehearsal.
-- Keep the existing API contract and backend scoring policy; add repository integration tests against PostgreSQL.
+- Add repository integration tests against PostgreSQL and concurrency tests for risk references.
 
 ## Deployment gate — Governance and assurance
 - Configure OIDC login, secure session management, workspace isolation, RBAC, approval separation of duties, and review notifications.
