@@ -5,6 +5,7 @@ export function hashToken(token: string) { return createHash("sha256").update(to
 export function appUrl() { return (process.env.AUTH_URL ?? "http://localhost:3000").replace(/\/$/, ""); }
 
 export function deliverLink(kind: "invitation" | "magic link", email: string, url: string) {
-  // Production deployments can replace this boundary with their transactional email provider.
-  console.info(`[BeyondBeams ${kind}] ${email}: ${url}`);
+  // Never log authentication or invitation URLs. Local development can inspect
+  // the returned preview link through the email preview flow instead.
+  if (process.env.NODE_ENV !== "production") console.info(`[BeyondBeams ${kind}] delivery prepared for ${email}`);
 }

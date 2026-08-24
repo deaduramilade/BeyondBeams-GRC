@@ -24,7 +24,7 @@ const emailSchema = z.string().trim().email().transform((value) => value.toLower
 export async function requestMagicLink(rawEmail: string) {
   const parsed = emailSchema.safeParse(rawEmail); if (!parsed.success) return { error: "Enter a valid email address." };
   if (await db.user.findUnique({ where: { email: parsed.data }, select: { id: true } })) { const token = createToken(); const identifier = `magic:${parsed.data}`; await db.$transaction([db.verificationToken.deleteMany({ where: { identifier } }), db.verificationToken.create({ data: { identifier, token: hashToken(token), expires: new Date(Date.now() + 15 * 60 * 1000) } })]); deliverLink("magic link", parsed.data, `${appUrl()}/magic-link?token=${encodeURIComponent(token)}&email=${encodeURIComponent(parsed.data)}`); }
-  return { success: true, message: "If an account exists, a sign-in link has been sent. In local development, check the server console." };
+  return { success: true, message: "If an account exists, a sign-in link has been sent. In local development, use the local email preview flow." };
 }
 
 const acceptanceSchema = z.object({ token: z.string().min(20), name: z.string().trim().min(2).max(80), password });

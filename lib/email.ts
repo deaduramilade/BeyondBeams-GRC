@@ -48,7 +48,9 @@ async function sendWithResend(recipient: string, subject: string, html: string, 
 
 export async function sendNotificationEmail(input: EmailInput) {
   const rendered = renderEmail(input);
-  const local = process.env.NODE_ENV !== "production" || (process.env.EMAIL_PROVIDER ?? "preview") === "preview";
+  const provider = process.env.EMAIL_PROVIDER ?? "preview";
+  if (process.env.NODE_ENV === "production" && provider === "preview") throw new Error("EMAIL_PROVIDER=preview is not allowed in production");
+  const local = process.env.NODE_ENV !== "production" && provider === "preview";
   const previewToken = local ? createToken() : undefined;
   try {
     if (!local) await sendWithResend(input.recipient, input.subject, rendered.html, rendered.text);
@@ -56,7 +58,7 @@ export async function sendNotificationEmail(input: EmailInput) {
     const auditActor = input.userId ?? (await db.membership.findFirst({ where: { tenantId: input.tenantId, acceptedAt: { not: null }, role: "OWNER", userId: { not: null } }, select: { userId: true } }))?.userId;
     if (auditActor) await db.auditEvent.create({ data: { tenantId: input.tenantId, actorId: auditActor, action: "CREATE", entityType: "Notification", entityId: notification.id, summary: `Sent ${input.type} notification to ${input.recipient}` } });
     const previewUrl = previewToken ? `${appUrl()}/email-preview/${previewToken}` : undefined;
-    if (local) console.info(`\n[BeyondBeams email preview]\nTo: ${input.recipient}\nSubject: ${input.subject}\nPreview: ${previewUrl}\n\n${rendered.text}\n`);
+    if (local) console.info(`[BeyondBeams email preview] prepared for ${input.recipient}; preview URL is available in the local response.`);
     return { sent: true as const, notificationId: notification.id, previewUrl };
   } catch (error) {
     if (input.dedupeKey && error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") return { sent: false as const, duplicate: true as const };

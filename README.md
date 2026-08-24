@@ -15,12 +15,9 @@ npm run dev
 
 On Windows PowerShell, use `Copy-Item .env.example .env` instead of `cp`. Open [http://localhost:3000](http://localhost:3000). If that port is occupied, run `npm run dev -- -p 3001` and set `AUTH_URL` to the same origin.
 
-## Demo login
+## Local seed data
 
-- Email: `owner@beyondbeams.com`
-- Password: `BeyondBeams2026!`
-
-The seed creates one demo tenant, one Owner membership, eight realistic sample risks, worldwide compliance references and linkages, workflow examples, and one emerging-risk monitoring case.
+The seed creates one demo tenant, one Owner membership, eight realistic sample risks, worldwide compliance references and linkages, workflow examples, and one emerging-risk monitoring case. To choose a local seed login password, set the untracked `SEED_DEMO_PASSWORD` value in `.env`; otherwise the seed generates a random password and does not print it or store it in the repository.
 
 Framework mapping is available at `/app/frameworks`. Owners and Risk Managers can enable frameworks; risk writers can search and map enabled controls while creating, editing, or viewing a risk. Free and Basic workspaces have framework and mapping limits, while Professional and Premium workspaces can use all included ISO 27001, NIST CSF 2.0, SOC 2, HIPAA, and fintech controls.
 
@@ -42,7 +39,7 @@ Owners and Risk Managers can invite members from `/app/roles` and assign Owner, 
 
 ## Email notifications
 
-Local development defaults to `EMAIL_PROVIDER=preview` and never requires SMTP or provider credentials. Every rendered email is written to the tenant-scoped `Notification` audit table, printed in full to the server console, and includes an `/email-preview/...` browser link. Production can use Resend by setting `EMAIL_PROVIDER=resend`, `RESEND_API_KEY`, and a verified `EMAIL_FROM`; secrets must remain outside source control.
+Local development defaults to `EMAIL_PROVIDER=preview` and never requires SMTP or provider credentials. Rendered email previews are stored in the tenant-scoped `Notification` audit table and are available through the local preview flow; raw authentication, invitation, and preview URLs are never written to logs. Production must use Resend by setting `EMAIL_PROVIDER=resend`, `RESEND_API_KEY`, and a verified `EMAIL_FROM`; secrets must remain outside source control.
 
 Owners configure review reminders under `/app/settings`; users can disable review, assignment, or export email categories there. The default review cadence is 7 days before, 1 day before, and the due/overdue day. Free workspaces use that default cadence; custom cadence requires Basic or higher. Reminder dispatch is idempotent and includes formal and emerging risks:
 

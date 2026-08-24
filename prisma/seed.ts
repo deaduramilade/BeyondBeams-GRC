@@ -1,5 +1,6 @@
 import { Plan, PrismaClient, RiskCategory, RiskStatus, RiskTreatment, Role } from "@prisma/client";
 import { hash } from "bcryptjs";
+import { randomBytes } from "node:crypto";
 import { complianceCatalog, linkComplianceToRisk } from "../lib/compliance";
 import { ensureTenantFrameworks, seedFrameworks } from "../lib/frameworks";
 
@@ -16,7 +17,8 @@ const risks = [
 ] as const;
 
 async function main() {
-  const passwordHash = await hash("BeyondBeams2026!", 12);
+  const demoPassword = process.env.SEED_DEMO_PASSWORD ?? randomBytes(24).toString("base64url");
+  const passwordHash = await hash(demoPassword, 12);
   const tenant = await db.tenant.upsert({ where: { slug: "beyondbeams-demo" }, update: { plan: Plan.PROFESSIONAL }, create: { name: "BeyondBeams Demo", slug: "beyondbeams-demo", plan: Plan.PROFESSIONAL } });
   const user = await db.user.upsert({ where: { email: "owner@beyondbeams.com" }, update: { passwordHash, tenantId: tenant.id, translatorUses: 0, paidPlan: false }, create: { email: "owner@beyondbeams.com", name: "Maya Chen", passwordHash, tenantId: tenant.id } });
   await db.membership.upsert({ where: { tenantId_userId: { tenantId: tenant.id, userId: user.id } }, update: { role: Role.OWNER, acceptedAt: new Date(), inviteEmail: null, inviteToken: null, inviteExpires: null }, create: { tenantId: tenant.id, userId: user.id, role: Role.OWNER, acceptedAt: new Date() } });
