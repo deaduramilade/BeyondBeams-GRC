@@ -5,12 +5,14 @@ import { db } from "@/lib/db";
 import { appUrl, createToken, hashToken } from "@/lib/tokens";
 import { sendNotificationEmail } from "@/lib/email";
 import { z } from "zod";
+import { clientAddress, enforceRateLimit, rateLimitResponse } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
   const session = await activeSession(); if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const limit = await enforceRateLimit("report", `${session.user.tenantId}:${session.user.id}:${clientAddress(request)}`); if (!limit.allowed) { const response = rateLimitResponse(limit); return NextResponse.json({ error: "Report generation limit reached. Try again later." }, response); }
   const params = new URL(request.url).searchParams; const type = (params.get("type") ?? "RISK_REGISTER").toUpperCase(); const format = (params.get("format") ?? "CSV").toUpperCase() as "CSV" | "XLSX" | "PDF";
   if (type === "AUDIT_TRAIL" && !auditExportRoles.includes(session.user.role as never)) return NextResponse.json({ error: "Audit export requires Owner, Auditor, or Risk Manager access." }, { status: 403 });
   if (!["RISK_REGISTER", "BOARD_REPORT", "GAP_ANALYSIS", "AUDIT_TRAIL"].includes(type) || !["CSV", "XLSX", "PDF"].includes(format)) return NextResponse.json({ error: "Unsupported report format." }, { status: 400 });
@@ -27,6 +29,7 @@ export async function GET(request: Request) {
 const deliverySchema = z.object({ type: z.enum(["RISK_REGISTER", "BOARD_REPORT", "GAP_ANALYSIS", "AUDIT_TRAIL"]), format: z.enum(["CSV", "XLSX", "PDF"]), recipients: z.array(z.string().email()).min(1).max(10), from: z.string().optional(), to: z.string().optional() });
 export async function POST(request: Request) {
   const session = await activeSession(); if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const limit = await enforceRateLimit("report", `${session.user.tenantId}:${session.user.id}:${clientAddress(request)}`); if (!limit.allowed) { const response = rateLimitResponse(limit); return NextResponse.json({ error: "Report delivery limit reached. Try again later." }, response); }
   const parsed = deliverySchema.safeParse(await request.json().catch(() => null)); if (!parsed.success) return NextResponse.json({ error: "Enter up to 10 valid recipient email addresses." }, { status: 400 });
   const { type, format, recipients, from, to } = parsed.data;
   if (type === "AUDIT_TRAIL" && !auditExportRoles.includes(session.user.role as never)) return NextResponse.json({ error: "Audit export requires Owner, Auditor, or Risk Manager access." }, { status: 403 });
