@@ -1,5 +1,7 @@
 # Implementation Plan
 
+> Historical planning input. The canonical application is now the root Next.js 15 App Router project. Use [docs/DEVELOPMENT_STATUS.md](docs/DEVELOPMENT_STATUS.md) and [docs/ROADMAP.md](docs/ROADMAP.md) for current status and sequencing; the React/Vite + FastAPI structure below is retained for traceability only.
+
 ## Overview
 
 Establish Northstar GRC as a professional organizational risk-management platform with durable risk records, inherent and residual assessments, heat maps, treatment and control tracking, auditable governance workflows, and management reporting.

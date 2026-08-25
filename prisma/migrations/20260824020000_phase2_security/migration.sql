@@ -20,3 +20,4 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 CREATE TRIGGER "AuditEvent_append_only" BEFORE UPDATE OR DELETE ON "AuditEvent" FOR EACH ROW EXECUTE FUNCTION prevent_audit_event_mutation();
+REVOKE UPDATE, DELETE, TRUNCATE ON "AuditEvent" FROM PUBLIC;

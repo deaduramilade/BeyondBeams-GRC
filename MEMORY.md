@@ -23,6 +23,6 @@ The former `frontend/` Vite and `backend/` FastAPI directories remain as migrati
 - Material risk changes require audit events; deletion remains soft.
 - Never claim a build or test passed without command output.
 
-## Verification status (2026-08-24)
+## Verification status (2026-08-25)
 
-The release-foundation branch includes environment validation, fail-closed production checks, security headers/CSP, timing-safe secret comparison, HMAC-keyed database-backed rate limiting, PostgreSQL validation/migration scaffolding, CI, focused tests, and responsive/authentication accessibility improvements. Final verification must be recorded from the current commit; hosted deployment, PostgreSQL migration rehearsal, authenticated browser checks, and production operations remain outstanding. See `docs/RELEASE_STATUS.md`.
+The release-foundation work includes environment validation, fail-closed production checks, security headers/CSP, timing-safe secret comparison, HMAC-keyed database-backed rate limiting, PostgreSQL validation/migration scaffolding, CI, focused tests, and responsive/authentication accessibility improvements. Local governance workflows now also cover versioned assessments, approval decisions, treatment plans/actions, control profiles, evidence metadata, appetite evaluation, taxonomy, framework mappings, reports, notifications, and emerging-risk workflows. Hosted deployment, PostgreSQL migration rehearsal, authenticated browser checks, production object storage/jobs, full lifecycle integration coverage, and production operations remain outstanding. See `docs/DEVELOPMENT_STATUS.md` and `docs/RELEASE_STATUS.md`.

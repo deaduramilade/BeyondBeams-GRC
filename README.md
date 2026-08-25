@@ -2,7 +2,7 @@
 
 BeyondBeams GRC is a multi-tenant risk register and assessment workspace built with Next.js 15, strict TypeScript, Auth.js, Prisma, Tailwind CSS, shadcn/ui, Radix UI, and SQLite for zero-setup local development. PostgreSQL is the canonical production database.
 
-Current release progress is tracked in [docs/RELEASE_STATUS.md](docs/RELEASE_STATUS.md). The application is suitable for controlled local assessment and staging preparation; it is not yet approved for real customer data.
+Current capability and remaining work are tracked in [docs/DEVELOPMENT_STATUS.md](docs/DEVELOPMENT_STATUS.md), with release gates in [docs/RELEASE_STATUS.md](docs/RELEASE_STATUS.md). The application is suitable for controlled local assessment and staging preparation; it is not yet approved for real customer data.
 
 ## Local setup
 
@@ -30,6 +30,8 @@ Framework mapping is available at `/app/frameworks`. Owners and Risk Managers ca
 - `npm run typecheck`: run strict TypeScript checking.
 - `npm run setup`: generate Prisma Client, create the SQLite database, and seed demo data.
 - `npm run db:seed`: reset the demo tenant's sample risks.
+
+Deployment probes are available at `/api/health` (liveness) and `/api/ready` (database readiness). The readiness endpoint returns `503` when the database cannot be reached.
 
 ## Data and authentication
 
