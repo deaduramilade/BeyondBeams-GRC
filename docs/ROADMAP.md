@@ -8,7 +8,7 @@ Core authentication, tenant scope, permissions, risk references, optimistic upda
 
 ## Phase 2 - Governed risk lifecycle
 
-Risk CRUD and local governance workflows are developed. Finish dedicated lifecycle views, structured action/control/evidence workflows, configurable scoring policies, appetite resolution, review scheduling, and end-to-end transition and approval validation.
+Risk CRUD and local governance workflows are developed. Server-side lifecycle invariants, tenant-safe evidence/control validation, treatment-action updates, appetite-breach resolution, and functional assessment/treatment/control entry routes are now developed locally. Finish dedicated lifecycle views, structured evidence storage, configurable scoring policies, review scheduling, and end-to-end transition and approval validation.
 
 ## Phase 3 - Frameworks and organisational context
 

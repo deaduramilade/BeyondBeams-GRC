@@ -18,3 +18,7 @@ Risk owners, approvers, treatment decisions, and review dates are explicit field
 ## ADR-005 — Framework mapping is configurable
 **Status:** Proposed
 Support ISO 31000, NIST CSF, CIS, SOC 2, and organisation-specific taxonomies through configurable mappings rather than hard-coding a compliance claim into the product.
+
+## ADR-006 — Enforce Phase 2 invariants at the server boundary
+**Status:** Accepted
+Residual assessments require an approved inherent assessment. Evidence, treatment actions, and control owners must resolve within the authenticated tenant. Treatment-action and appetite-breach state changes are audited. Client forms and route visibility are never the authority for these rules.

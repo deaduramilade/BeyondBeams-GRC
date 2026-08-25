@@ -4,6 +4,8 @@ BeyondBeams GRC is a multi-tenant risk register and assessment workspace built w
 
 Current capability and remaining work are tracked in [docs/DEVELOPMENT_STATUS.md](docs/DEVELOPMENT_STATUS.md), with release gates in [docs/RELEASE_STATUS.md](docs/RELEASE_STATUS.md). The application is suitable for controlled local assessment and staging preparation; it is not yet approved for real customer data.
 
+Phase 2 governance is available under `/app/governance`; the assessment, treatment, and control navigation entries open that governed workspace. Residual assessments, evidence links, control owners, treatment-action updates, and appetite-breach resolutions are validated server-side within the authenticated tenant.
+
 ## Local setup
 
 Prerequisites: Node.js 20 or 22 LTS and npm.
