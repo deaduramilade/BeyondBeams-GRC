@@ -60,6 +60,7 @@ Implemented locally, pending PostgreSQL rehearsal and authenticated browser acce
 - Owner/Risk Manager TOTP MFA uses encrypted secrets, a standard `otpauth://` setup URI, confirmation, and login-time verification.
 - Audit writes are centralized through an append helper; no application edit/delete path is provided. The PostgreSQL migration now revokes update/delete/truncate privileges on audit events from `PUBLIC`; production role separation and a live privilege-rehearsal check remain outstanding.
 - Phase 2 security tests cover permission denial, TOTP, one-way tokens, tenant predicate contract, and optimistic revisions. Full PostgreSQL integration/concurrency tests require a disposable PostgreSQL service.
+- Phase 2 policy tests cover residual-assessment prerequisites, control state validation, and appetite resolution states. Server actions validate evidence/control ownership within the authenticated tenant.
 
 ### Local assessment test path
 

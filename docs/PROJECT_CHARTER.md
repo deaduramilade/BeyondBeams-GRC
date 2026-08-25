@@ -11,7 +11,7 @@ Provide a focused, auditable workspace for identifying, assessing, prioritising,
 ## Scope
 **Current product slice:** risk register, search/filter, scoring bands, summary indicators, create-risk workflow, and risk detail view.
 
-**Next increments:** API persistence, authentication/RBAC, residual-risk scoring, controls and action plans, audit events, reporting/export, configurable scales, and PostgreSQL migrations.
+**Next increments:** complete the governed lifecycle UI, configurable scoring policies, review scheduling, evidence storage, and PostgreSQL/integration release validation. Local persistence, authentication/RBAC, residual assessments, controls/actions, audit events, reporting/export, and migration scaffolding are already implemented to the documented local-assessment level.
 
 **Out of scope:** legal advice, automatic certification, autonomous risk acceptance, and claims of compliance with any framework without customer configuration and evidence.
 

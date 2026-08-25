@@ -15,6 +15,7 @@ From the repository root, install dependencies, copy `.env.example` to `.env`, r
 - Report download URLs are single-use bearer credentials. Treat them as confidential and verify replay returns HTTP 410.
 - Owners and Risk Managers must enroll in TOTP MFA before production access. Store `AUTH_SECRET` only in the managed secret store; it encrypts MFA secrets and signs sessions.
 - Deployment probes: `GET /api/health` is a dependency-free liveness check; `GET /api/ready` verifies database connectivity and returns HTTP 503 without exposing database details when unavailable.
+- Phase 2 policy tests verify that residual assessments require approved inherent context, control owners belong to the tenant, evidence links resolve only inside the tenant, treatment actions can be audited through state changes, and appetite breaches require a reasoned resolution.
 
 ## Data and security
 - Local `.env` files are never committed.

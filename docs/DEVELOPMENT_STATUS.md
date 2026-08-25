@@ -1,6 +1,6 @@
 # Development Status
 
-**Updated:** 2026-08-25  
+**Updated:** 2026-08-25
 **Canonical application:** root Next.js 15 App Router application  
 **Status:** suitable for controlled local assessment and staging preparation; not approved for live customer data
 
@@ -42,10 +42,11 @@ This document is the current capability inventory. It reconciles the `.clinerule
 - Risk register with create, edit, detail, search/filter, score display, owners, status, treatment choice, review date, soft delete, audit events, and inherent/residual fields.
 - Versioned assessment records with inherent/residual types, rationale, revision, submission, approval/rejection, superseding, server-side score calculation, and separation from self-approval.
 - Risk status transition validation, treatment plans, acceptance/treatment decisions, treatment actions, overdue escalation, control profiles, evidence metadata, appetite statements/breach evaluation, and configurable taxonomy records through the governance workbench/actions.
+- Server-side Phase 2 integrity checks now require approved inherent context for residual assessments, validate control owners and states, restrict evidence links to the active tenant, audit treatment-action updates, and support auditable appetite-breach resolution.
 
 **Partially developed**
 
-- Governance workflows are functional locally but remain concentrated in a broad workbench rather than complete feature-owned registers and dedicated lifecycle views.
+- Governance workflows are functional locally and the assessment, treatment, and control navigation targets now enter the governed workspace; the experience remains concentrated in one workbench rather than complete feature-owned registers and dedicated lifecycle views.
 - Treatment and control records exist, but action history, dependencies, evidence upload/scanning/storage, control-to-risk effectiveness rollups, and full residual-assessment prerequisites are incomplete.
 - Scoring uses the fixed 1-5 multiplication model. Versioned tenant scoring policies, configurable matrices/bands, policy history, and formal recalculation rules are not complete.
 - Appetite breach records can be generated, but acknowledgement, treatment, acceptance, resolution, escalation notifications, and management reporting are incomplete.
