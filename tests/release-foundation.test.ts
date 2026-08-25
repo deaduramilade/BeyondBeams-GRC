@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { evaluateLimit, safeEqual } from "@/lib/rate-limit";
 import { validateEnv } from "@/lib/env";
 
-const baseEnv = { DATABASE_URL: "file:./dev.db", AUTH_SECRET: "a".repeat(40), AUTH_URL: "http://localhost:3000", EMAIL_PROVIDER: "preview" };
+const baseEnv: NodeJS.ProcessEnv = { DATABASE_URL: "file:./dev.db", AUTH_SECRET: "a".repeat(40), AUTH_URL: "http://localhost:3000", EMAIL_PROVIDER: "preview", NODE_ENV: "development" };
 
 test("development environment accepts the local SQLite configuration", () => {
   assert.equal(validateEnv(baseEnv).DATABASE_URL, "file:./dev.db");
