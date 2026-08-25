@@ -2,6 +2,7 @@ import { Role } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
+import { hasPermission, type Permission } from "@/lib/security";
 
 export const writeRoles: Role[] = [Role.OWNER, Role.RISK_MANAGER, Role.ASSESSOR];
 export const deleteRoles: Role[] = [Role.OWNER, Role.RISK_MANAGER];
@@ -20,3 +21,4 @@ export async function activeSession() {
 }
 export async function requireSession() { const session = await activeSession(); if (!session) redirect("/login?error=access"); return session; }
 export async function requireRole(roles: Role[]) { const session = await requireSession(); if (!roles.includes(session.user.role)) throw new Error("You do not have permission to perform this action."); return session; }
+export async function requirePermission(permission: Permission) { const session = await requireSession(); if (!hasPermission(session.user.role, permission)) throw new Error("You do not have permission to perform this action."); return session; }

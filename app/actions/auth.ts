@@ -5,13 +5,18 @@ import { Prisma, Role } from "@prisma/client";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { appUrl, createToken, deliverLink, hashToken } from "@/lib/tokens";
+import { requireSession } from "@/lib/authz";
+import { createTotpSecret, encryptSecret, totpUri, verifyTotpCode } from "@/lib/security";
+import { sendNotificationEmail } from "@/lib/email";
 import { enforceRateLimit } from "@/lib/rate-limit";
+import { verifyTurnstile } from "@/lib/turnstile";
 
 const password = z.string().min(10, "Use at least 10 characters.").max(72);
 const registrationSchema = z.object({ name: z.string().trim().min(2).max(80), email: z.string().trim().email().transform((value) => value.toLowerCase()), organisation: z.string().trim().min(2).max(100), password });
 function slugBase(value: string) { return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 42) || "workspace"; }
 
-export async function registerAccount(input: z.input<typeof registrationSchema>) {
+export async function registerAccount(input: z.input<typeof registrationSchema> & { turnstileToken?: string }) {
+  if (!(await verifyTurnstile(input.turnstileToken ?? "", "register"))) return { error: "Complete the Cloudflare verification and try again." };
   const limit = await enforceRateLimit("registration", String(input.email ?? "unknown")); if (!limit.allowed) return { error: "Too many registration attempts. Please try again later." };
   const parsed = registrationSchema.safeParse(input); if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Check your details." };
   if (await db.user.findUnique({ where: { email: parsed.data.email }, select: { id: true } })) return { error: "An account already exists for this email." };
@@ -23,11 +28,46 @@ export async function registerAccount(input: z.input<typeof registrationSchema>)
 }
 
 const emailSchema = z.string().trim().email().transform((value) => value.toLowerCase());
-export async function requestMagicLink(rawEmail: string) {
+export async function requestMagicLink(rawEmail: string, turnstileToken = "") {
+  if (!(await verifyTurnstile(turnstileToken, "magic-link"))) return { error: "Complete the Cloudflare verification and try again." };
   const limit = await enforceRateLimit("magicLink", rawEmail); if (!limit.allowed) return { error: "Too many requests. Please try again later." };
   const parsed = emailSchema.safeParse(rawEmail); if (!parsed.success) return { error: "Enter a valid email address." };
   if (await db.user.findUnique({ where: { email: parsed.data }, select: { id: true } })) { const token = createToken(); const identifier = `magic:${parsed.data}`; await db.$transaction([db.verificationToken.deleteMany({ where: { identifier } }), db.verificationToken.create({ data: { identifier, token: hashToken(token), expires: new Date(Date.now() + 15 * 60 * 1000) } })]); deliverLink("magic link", parsed.data, `${appUrl()}/magic-link?token=${encodeURIComponent(token)}&email=${encodeURIComponent(parsed.data)}`); }
   return { success: true, message: "If an account exists, a sign-in link has been sent. In local development, use the local email preview flow." };
+}
+
+export async function requestPasswordReset(rawEmail: string, turnstileToken = "") {
+  if (!(await verifyTurnstile(turnstileToken, "password-reset"))) return { success: true };
+  const limit = await enforceRateLimit("passwordReset", rawEmail); if (!limit.allowed) return { success: true };
+  const parsed = emailSchema.safeParse(rawEmail); if (!parsed.success) return { success: true };
+  const user = await db.user.findUnique({ where: { email: parsed.data }, select: { id: true } });
+  if (user) { const token = createToken(); const url = `${appUrl()}/reset-password?token=${token}&email=${encodeURIComponent(parsed.data)}`; await db.$transaction([db.verificationToken.deleteMany({ where: { identifier: `reset:${parsed.data}` } }), db.verificationToken.create({ data: { identifier: `reset:${parsed.data}`, token: hashToken(token), expires: new Date(Date.now() + 30 * 60 * 1000) } })]); await sendNotificationEmail({ tenantId: (await db.user.findUniqueOrThrow({ where: { id: user.id }, select: { tenantId: true } })).tenantId, userId: user.id, recipient: parsed.data, type: "PASSWORD_RESET", subject: "Reset your BeyondBeams GRC password", eyebrow: "Account recovery", heading: "Reset your password", paragraphs: ["A password reset was requested for your account.", "This single-use link expires in 30 minutes. If you did not request it, no action is required."], cta: { label: "Reset password", url }, relatedEntityType: "User", relatedEntityId: user.id }); }
+  return { success: true, message: "If an account exists, a password reset link has been sent." };
+}
+
+export async function resetPassword(input: { email: string; token: string; password: string }) {
+  const parsed = z.object({ email: emailSchema, token: z.string().min(20), password }).safeParse(input); if (!parsed.success) return { error: "Invalid reset request." };
+  const identifier = `reset:${parsed.data.email}`; const stored = await db.verificationToken.findUnique({ where: { identifier_token: { identifier, token: hashToken(parsed.data.token) } } });
+  if (!stored || stored.expires <= new Date()) return { error: "This reset link is invalid or has expired." };
+  const passwordHash = await hash(parsed.data.password, 12);
+  const result = await db.$transaction(async (tx) => { const updated = await tx.user.updateMany({ where: { email: parsed.data.email }, data: { passwordHash, sessionVersion: { increment: 1 } } }); if (updated.count !== 1) throw new Error("Account not found."); await tx.verificationToken.delete({ where: { identifier_token: { identifier, token: hashToken(parsed.data.token) } } }); return updated; });
+  return result.count === 1 ? { success: true } : { error: "Password reset failed." };
+}
+
+export async function beginMfaSetup(): Promise<{ success: true; uri: string } | { error: string }> {
+  const session = await requireSession();
+  const secret = createTotpSecret(); await db.user.update({ where: { id: session.user.id }, data: { mfaSecret: encryptSecret(secret), mfaEnabled: false, mfaConfirmedAt: null } });
+  return { success: true, uri: totpUri(secret, session.user.email ?? "user") };
+}
+
+export async function confirmMfa(code: string) {
+  const session = await requireSession(); const user = await db.user.findUniqueOrThrow({ where: { id: session.user.id }, select: { mfaSecret: true } });
+  if (!user.mfaSecret || !verifyTotpCode((await import("@/lib/security")).decryptSecret(user.mfaSecret), code)) return { error: "The verification code is invalid." };
+  await db.user.update({ where: { id: session.user.id }, data: { mfaEnabled: true, mfaConfirmedAt: new Date(), securityOnboardingCompletedAt: new Date() } }); return { success: true };
+}
+
+export async function disableMfa() {
+  const session = await requireSession(); await db.user.update({ where: { id: session.user.id }, data: { mfaEnabled: false, mfaSecret: null, mfaConfirmedAt: null, sessionVersion: { increment: 1 } } }); return { success: true };
 }
 
 const acceptanceSchema = z.object({ token: z.string().min(20), name: z.string().trim().min(2).max(80), password });

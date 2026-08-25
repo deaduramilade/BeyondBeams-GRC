@@ -10,6 +10,10 @@
 - Deploy the PostgreSQL migration to a disposable database and seed only non-production assessment data.
 - Add tenant-isolation/permission integration tests and authenticated browser checks.
 
+## Completed locally — Phase 2 security and correctness
+- Tenant sequence references, optimistic risk concurrency, atomic create/audit writes, single-use report links, permission matrix, password reset/session invalidation, encrypted TOTP MFA, and focused security tests.
+- PostgreSQL rehearsal, database append-only grants, full multi-tenant integration tests, and hosted browser acceptance remain deployment gates, not claims of completion.
+
 ## Deployment gate — Trusted data foundation
 - Add transaction boundaries, tenant filters, cursor pagination, idempotency, and migration/rollback rehearsal.
 - Add repository integration tests against PostgreSQL and concurrency tests for risk references.

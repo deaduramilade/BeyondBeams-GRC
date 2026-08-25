@@ -11,7 +11,7 @@ test("development environment accepts the local SQLite configuration", () => {
 
 test("production environment fails closed for incomplete configuration", () => {
   assert.throws(() => validateEnv({ ...baseEnv, NODE_ENV: "production" }), /PostgreSQL/);
-  assert.doesNotThrow(() => validateEnv({ DATABASE_URL: "postgresql://db", AUTH_SECRET: "a".repeat(40), AUTH_URL: "https://app.example.com", NODE_ENV: "production", EMAIL_PROVIDER: "resend", RESEND_API_KEY: "re_123", EMAIL_FROM: "GRC <no-reply@example.com>", NOTIFICATION_CRON_SECRET: "b".repeat(40), RATE_LIMIT_SECRET: "c".repeat(40) }));
+  assert.doesNotThrow(() => validateEnv({ DATABASE_URL: "postgresql://db", AUTH_SECRET: "a".repeat(40), AUTH_URL: "https://app.example.com", NODE_ENV: "production", EMAIL_PROVIDER: "resend", RESEND_API_KEY: "re_123", EMAIL_FROM: "GRC <no-reply@example.com>", NOTIFICATION_CRON_SECRET: "b".repeat(40), RATE_LIMIT_SECRET: "c".repeat(40), NEXT_PUBLIC_TURNSTILE_SITE_KEY: "0x4AAAAAAA-test-site", TURNSTILE_SECRET_KEY: "0x4AAAAAAA-test-secret" }));
 });
 
 test("secret comparison is timing-safe and length-sensitive", () => {

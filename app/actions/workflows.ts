@@ -1,3 +1,4 @@
+import type { Prisma } from "@prisma/client";
 "use server";
 
 import { revalidatePath } from "next/cache";
@@ -10,6 +11,7 @@ import { linkComplianceToRisk } from "@/lib/compliance";
 import { appUrl } from "@/lib/tokens";
 import { sendNotificationEmail } from "@/lib/email";
 import { notifyEmergingSettlement } from "@/lib/lifecycle-notifications";
+import { nextRiskReference } from "@/lib/risk-reference";
 
 const recordSchema = z.object({ module: z.string(), title: z.string().trim().min(3).max(140), owner: z.string().trim().min(2).max(100), status: z.string().trim().min(2).max(40), priority: z.string().trim().min(2).max(20), dueDate: z.coerce.date().nullable(), details: z.string().trim().min(10).max(5000), outcome: z.string().trim().min(10).max(3000) });
 
@@ -34,7 +36,7 @@ export async function createEmergingRisk(input: z.input<typeof emergingSchema>) 
 export async function settleEmergingRisk(id: string, decision: string, promote: boolean) {
   const session = await requireRole(writeRoles); const item = await db.emergingRisk.findFirst({ where: { id, tenantId: session.user.tenantId, status: "MONITORING" } }); if (!item) return { error: "Emerging risk not found or already settled." };
   let promotedRiskId: string | undefined;
-  if (promote) { const count = await db.risk.count({ where: { tenantId: session.user.tenantId } }); const risk = await db.risk.create({ data: { tenantId: session.user.tenantId, reference: `RSK-${String(count + 1).padStart(4,"0")}`, title: item.title, description: item.hypothesis, category: "STRATEGIC", ownerId: item.ownerId, inherentLikelihood: 3, inherentImpact: 3, inherentScore: 9, treatment: "NONE", status: "IN_REVIEW", nextReviewDate: item.nextReviewDate } }); await linkComplianceToRisk(risk); promotedRiskId = risk.id; }
+  if (promote) { const risk = await db.$transaction(async (tx: Prisma.TransactionClient) => { const reference = await nextRiskReference(tx, session.user.tenantId); return tx.risk.create({ data: { tenantId: session.user.tenantId, reference, title: item.title, description: item.hypothesis, category: "STRATEGIC", ownerId: item.ownerId, inherentLikelihood: 3, inherentImpact: 3, inherentScore: 9, treatment: "NONE", status: "IN_REVIEW", nextReviewDate: item.nextReviewDate } }); }); await linkComplianceToRisk(risk); promotedRiskId = risk.id; }
   await db.emergingRisk.update({ where: { id }, data: { status: promote ? "PROMOTED" : "SETTLED", settlementDecision: decision, settledAt: new Date(), promotedRiskId } });
   await notifyEmergingSettlement(item, promote);
   await db.auditEvent.create({ data: { tenantId: session.user.tenantId, actorId: session.user.id, action: "UPDATE", entityType: "EmergingRisk", entityId: id, summary: promote ? `Promoted emerging risk into the formal register` : `Settled emerging risk without promotion`, changes: decision } }); revalidatePath("/app/emerging-risks"); revalidatePath("/app/risks"); return { success: true };
