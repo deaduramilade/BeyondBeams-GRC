@@ -1,3 +1,4 @@
+import type { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { activeSession, deleteRoles, writeRoles } from "@/lib/authz";
@@ -16,7 +17,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   const body = await request.json(); const parsed = riskSchema.safeParse(body); if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 }); const data = parsed.data; const expectedVersion = Number(body.version);
   if (!Number.isInteger(expectedVersion) || expectedVersion < 1) return NextResponse.json({ error: "A current risk version is required." }, { status: 400 });
   const owner = await db.user.findFirst({ where: { id: data.ownerId, tenantId: session.user.tenantId } }); if (!owner) return NextResponse.json({ error: "Invalid owner" }, { status: 400 });
-  const updated = await db.$transaction(async (tx: any) => { const result = await tx.risk.updateMany({ where: { id, tenantId: session.user.tenantId, version: expectedVersion, deletedAt: null }, data: { ...data, version: { increment: 1 }, inherentScore: data.inherentLikelihood * data.inherentImpact, residualScore: data.residualLikelihood && data.residualImpact ? data.residualLikelihood * data.residualImpact : null } }); if (result.count !== 1) return 0; await tx.auditEvent.create({ data: { tenantId: session.user.tenantId, riskId: id, actorId: session.user.id, action: "UPDATE", entityId: id, summary: `Updated ${current.reference}`, changes: JSON.stringify({ version: expectedVersion, nextVersion: expectedVersion + 1 }) } }); return 1; });
+  const updated = await db.$transaction(async (tx: Prisma.TransactionClient) => { const result = await tx.risk.updateMany({ where: { id, tenantId: session.user.tenantId, version: expectedVersion, deletedAt: null }, data: { ...data, version: { increment: 1 }, inherentScore: data.inherentLikelihood * data.inherentImpact, residualScore: data.residualLikelihood && data.residualImpact ? data.residualLikelihood * data.residualImpact : null } }); if (result.count !== 1) return 0; await tx.auditEvent.create({ data: { tenantId: session.user.tenantId, riskId: id, actorId: session.user.id, action: "UPDATE", entityId: id, summary: `Updated ${current.reference}`, changes: JSON.stringify({ version: expectedVersion, nextVersion: expectedVersion + 1 }) } }); return 1; });
   if (updated !== 1) return NextResponse.json({ error: "Conflict: this risk was changed by another user. Reload before saving." }, { status: 409 });
   const risk = await db.risk.findUniqueOrThrow({ where: { id } });
   await linkComplianceToRisk(risk); return NextResponse.json(risk);

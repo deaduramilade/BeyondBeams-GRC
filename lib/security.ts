@@ -3,12 +3,12 @@ import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes, 
 export type Permission =
   | "risk:create" | "risk:update" | "risk:delete" | "risk:read"
   | "framework:manage" | "mapping:manage" | "member:manage"
-  | "audit:read" | "report:export" | "settings:manage";
+  | "audit:read" | "report:export" | "settings:manage" | "assessment:approve" | "treatment:manage" | "treatment:approve" | "control:manage" | "evidence:manage" | "appetite:manage" | "taxonomy:manage";
 
 const permissions: Record<string, Permission[]> = {
-  OWNER: ["risk:create", "risk:update", "risk:delete", "risk:read", "framework:manage", "mapping:manage", "member:manage", "audit:read", "report:export", "settings:manage"],
-  RISK_MANAGER: ["risk:create", "risk:update", "risk:delete", "risk:read", "framework:manage", "mapping:manage", "audit:read", "report:export"],
-  ASSESSOR: ["risk:create", "risk:update", "risk:read", "mapping:manage"],
+  OWNER: ["risk:create", "risk:update", "risk:delete", "risk:read", "framework:manage", "mapping:manage", "member:manage", "audit:read", "report:export", "settings:manage", "assessment:approve", "treatment:manage", "treatment:approve", "control:manage", "evidence:manage", "appetite:manage", "taxonomy:manage"],
+  RISK_MANAGER: ["risk:create", "risk:update", "risk:delete", "risk:read", "framework:manage", "mapping:manage", "audit:read", "report:export", "assessment:approve", "treatment:manage", "treatment:approve", "control:manage", "evidence:manage", "appetite:manage", "taxonomy:manage"],
+  ASSESSOR: ["risk:create", "risk:update", "risk:read", "mapping:manage", "treatment:manage", "control:manage", "evidence:manage"],
   VIEWER: ["risk:read"],
   AUDITOR: ["risk:read", "audit:read", "report:export"],
 };

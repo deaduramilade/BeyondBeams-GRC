@@ -20,6 +20,7 @@ export const appTiles = [
 export const grcNav = [
   { href: "/app/risks", label: "Risk identification", icon: BookOpenCheck },
   { href: "/app/assessments", label: "Assessment & scoring", icon: Gauge },
+  { href: "/app/governance", label: "Governance workbench", icon: ClipboardCheck },
   { href: "/app/treatments", label: "Treatment plans", icon: ListChecks },
   { href: "/app/controls", label: "Control management", icon: SlidersHorizontal },
   { href: "/app/frameworks", label: "Frameworks & compliance", icon: Scale },
