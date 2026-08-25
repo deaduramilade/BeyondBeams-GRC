@@ -14,6 +14,7 @@ From the repository root, install dependencies, copy `.env.example` to `.env`, r
 - Phase 2 local security checks: `npm test`, `npm run typecheck`, `npm run db:validate`, `npm run build`, and `git diff --check`.
 - Report download URLs are single-use bearer credentials. Treat them as confidential and verify replay returns HTTP 410.
 - Owners and Risk Managers must enroll in TOTP MFA before production access. Store `AUTH_SECRET` only in the managed secret store; it encrypts MFA secrets and signs sessions.
+- Deployment probes: `GET /api/health` is a dependency-free liveness check; `GET /api/ready` verifies database connectivity and returns HTTP 503 without exposing database details when unavailable.
 
 ## Data and security
 - Local `.env` files are never committed.
@@ -21,6 +22,7 @@ From the repository root, install dependencies, copy `.env.example` to `.env`, r
 - Production secrets belong in a managed secret store.
 - The application enforces tenant scope and role checks server-side; UI controls are not security boundaries. Tenant isolation still needs a dedicated automated integration test matrix before public exposure.
 - Logs must avoid passwords, tokens, sensitive personal data, and full evidence contents.
+- PostgreSQL audit protection: the security migration installs an append-only trigger and revokes `UPDATE`, `DELETE`, and `TRUNCATE` from `PUBLIC`. Production database ownership must remain with a migration/administration role separate from the runtime role; verify those grants during migration rehearsal.
 
 ## Change discipline
 Update `MEMORY.md` with completed work and known gaps. Add material design changes to `DECISIONS.md`. Keep `ROADMAP.md` and `docs/RELEASE_STATUS.md` aligned with actual implementation. Do not mark PostgreSQL durability, auth, compliance, or production audit persistence complete until it exists and is tested.

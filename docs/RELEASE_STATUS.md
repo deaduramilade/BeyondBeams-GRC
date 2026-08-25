@@ -1,8 +1,10 @@
 # Release Foundation Status
 
-**Updated:** 2026-08-24  
+**Updated:** 2026-08-25
 **Branch:** `feature/release-foundation`  
 **Scope:** Phase 1 release foundation for the Next.js GRC application
+
+For the complete developed/partial/not-developed inventory grouped into five phases, see [DEVELOPMENT_STATUS.md](DEVELOPMENT_STATUS.md). This document remains focused on release evidence and blockers.
 
 ## Implemented in this phase
 
@@ -14,6 +16,7 @@
 - PostgreSQL schema validation, initial migration scaffolding, and a separate SQLite local-development path.
 - GitHub Actions checks for typecheck, lint, tests, Prisma validation, and production build.
 - Responsive shell improvements, mobile navigation behavior, touch target sizing, and login form accessibility/autocomplete.
+- Dependency-free liveness and database-backed readiness probes at `/api/health` and `/api/ready`.
 
 ## Verification evidence
 
@@ -28,7 +31,7 @@ npm run build
 git diff --check
 ```
 
-Verified on 2026-08-24: `typecheck` passed, lint passed with no warnings/errors, all 4 focused tests passed, both Prisma schemas validated, the production build passed, and `git diff --check` passed. Prisma emitted only the existing Prisma 7 configuration deprecation warning. A local SQLite seed is suitable for product assessment; PostgreSQL migration deployment still requires a disposable or managed PostgreSQL instance.
+Verified on 2026-08-24: `typecheck` passed, lint passed with no warnings/errors, all focused tests passed, both Prisma schemas validated, the production build passed, and `git diff --check` passed. Prisma emitted only the existing Prisma 7 configuration deprecation warning. A local SQLite seed is suitable for product assessment; PostgreSQL migration deployment still requires a disposable or managed PostgreSQL instance.
 
 ## Deployment status
 
@@ -41,7 +44,7 @@ Railway deployment was not completed because the Railway CLI is not installed in
 - Deploy and rehearse the PostgreSQL migration against a real disposable PostgreSQL database.
 - Add integration and end-to-end coverage for tenant isolation, permissions, invitations, reports, and authenticated workflows.
 - Move report artifacts to private tenant-scoped object storage or enforce a documented size and retention limit.
-- Add durable report/notification jobs, provider retries, bounce handling, observability, backups, restore testing, and health/readiness endpoints.
+- Add durable report/notification jobs, provider retries, bounce handling, observability, backups, and restore testing.
 - Complete the governed GRC domain: versioned assessments, approval gates, lifecycle transitions, treatment actions, evidence, appetite, configurable taxonomy, retention, and legal hold.
 
 ## Phase 2 — Security and correctness implementation
@@ -55,7 +58,7 @@ Implemented locally, pending PostgreSQL rehearsal and authenticated browser acce
 - Permission matrix and server-side `requirePermission` helper; UI visibility is not treated as authorization.
 - Password reset links are hashed, expire after 30 minutes, are single-use, and increment `sessionVersion` to invalidate existing JWT sessions.
 - Owner/Risk Manager TOTP MFA uses encrypted secrets, a standard `otpauth://` setup URI, confirmation, and login-time verification.
-- Audit writes are centralized through an append helper; no application edit/delete path is provided. Database-level append-only permissions still require PostgreSQL role policy and operational migration review.
+- Audit writes are centralized through an append helper; no application edit/delete path is provided. The PostgreSQL migration now revokes update/delete/truncate privileges on audit events from `PUBLIC`; production role separation and a live privilege-rehearsal check remain outstanding.
 - Phase 2 security tests cover permission denial, TOTP, one-way tokens, tenant predicate contract, and optimistic revisions. Full PostgreSQL integration/concurrency tests require a disposable PostgreSQL service.
 
 ### Local assessment test path
@@ -68,6 +71,8 @@ Implemented locally, pending PostgreSQL rehearsal and authenticated browser acce
 6. Generate an emailed report in local preview, download it once, and verify the same link returns HTTP 410 on replay or after expiry.
 
 Local SQLite is for assessment only. Before hosted testing, apply the PostgreSQL migration, provision managed secrets, HTTPS, production email, and backups. No hosting credentials are available in this workspace, so the test URL remains local rather than being falsely presented as a production deployment.
+
+The live liveness probe returned HTTP 200 on 2026-08-25. The currently running local server returned HTTP 503 from readiness because its database connection was unavailable; Docker Desktop was not running, so PostgreSQL migration rehearsal could not be performed. The readiness response correctly exposed only `{ "status": "not_ready" }`.
 
 ## Assessment account policy
 
