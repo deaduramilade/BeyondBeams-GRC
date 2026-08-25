@@ -1,0 +1,3 @@
+import { AuthLayout } from "@/components/auth-layout";
+import { ResetPasswordForm, RequestPasswordResetForm } from "@/components/auth-forms";
+export default async function ResetPasswordPage({ searchParams }: { searchParams: Promise<{ email?: string; token?: string }> }) { const { email = "", token = "" } = await searchParams; return <AuthLayout eyebrow="Account recovery" title="Reset your password" description="Use a single-use link to choose a new password.">{email && token ? <ResetPasswordForm email={email} token={token}/> : <RequestPasswordResetForm/>}</AuthLayout>; }

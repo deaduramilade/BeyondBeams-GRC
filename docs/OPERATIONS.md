@@ -11,6 +11,9 @@ From the repository root, install dependencies, copy `.env.example` to `.env`, r
 - Prisma schemas: `npm run db:validate`.
 - Production build: `npm run build`.
 - Before release, test permissions, data isolation, score boundaries, audit events, and PostgreSQL migration rollback.
+- Phase 2 local security checks: `npm test`, `npm run typecheck`, `npm run db:validate`, `npm run build`, and `git diff --check`.
+- Report download URLs are single-use bearer credentials. Treat them as confidential and verify replay returns HTTP 410.
+- Owners and Risk Managers must enroll in TOTP MFA before production access. Store `AUTH_SECRET` only in the managed secret store; it encrypts MFA secrets and signs sessions.
 
 ## Data and security
 - Local `.env` files are never committed.

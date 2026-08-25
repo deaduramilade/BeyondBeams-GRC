@@ -97,6 +97,8 @@ model Tenant {
   reviewRemindersEnabled Boolean               @default(true)
   reviewReminderCadence  String                @default("7,1,0")
   notifications          Notification[]
+  sequences               TenantSequence[]
+  sequences               TenantSequence[]
 }
 
 model RateLimitBucket {
@@ -106,6 +108,15 @@ model RateLimitBucket {
   expiresAt   DateTime
 
   @@index([expiresAt])
+}
+
+model TenantSequence {
+  id       String @id @default(cuid())
+  tenantId String
+  name     String
+  value    Int    @default(0)
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  @@unique([tenantId, name])
 }
 
 model User {
@@ -133,6 +144,14 @@ model User {
   reviewEmailsEnabled     Boolean                @default(true)
   assignmentEmailsEnabled Boolean                @default(true)
   exportEmailsEnabled     Boolean                @default(true)
+  sessionVersion          Int                    @default(0)
+  mfaSecret               String?
+  mfaEnabled              Boolean                @default(false)
+  mfaConfirmedAt          DateTime?
+  sessionVersion          Int                    @default(0)
+  mfaSecret               String?
+  mfaEnabled              Boolean                @default(false)
+  mfaConfirmedAt          DateTime?
   notifications           Notification[]
 
   @@index([tenantId])
@@ -198,7 +217,17 @@ model Membership {
   @@index([inviteEmail])
 }
 
-model Risk {
+model TenantSequence {
+  id       String @id @default(cuid())
+  tenantId String
+  name     String
+  value    Int    @default(0)
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, name])
+}
+
+model User {
   id                 String                 @id @default(cuid())
   tenantId           String
   reference          String
@@ -218,6 +247,8 @@ model Risk {
   createdAt          DateTime               @default(now())
   updatedAt          DateTime               @updatedAt
   deletedAt          DateTime?
+  version            Int       @default(1)
+  version            Int       @default(1)
   tenant             Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   owner              User                   @relation("RiskOwner", fields: [ownerId], references: [id])
   auditEvents        AuditEvent[]
@@ -405,6 +436,8 @@ model ExportHistory {
   artifactBase64    String?
   downloadTokenHash String?      @unique
   downloadExpires   DateTime?
+  downloadedAt      DateTime?
+  downloadedAt      DateTime?
 
   @@index([tenantId, createdAt])
   @@index([tenantId, status, createdAt])

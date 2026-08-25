@@ -6,6 +6,7 @@ export const RATE_LIMITS = {
   login: { limit: 10, windowSeconds: 15 * 60 },
   registration: { limit: 5, windowSeconds: 60 * 60 },
   magicLink: { limit: 5, windowSeconds: 15 * 60 },
+  passwordReset: { limit: 5, windowSeconds: 15 * 60 },
   invitation: { limit: 20, windowSeconds: 60 * 60 },
   cron: { limit: 2, windowSeconds: 60 },
   report: { limit: 10, windowSeconds: 60 * 60 },

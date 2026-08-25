@@ -5,6 +5,7 @@ import { appUrl, createToken, hashToken } from "@/lib/tokens";
 export type NotificationType =
   | "INVITATION"
   | "MAGIC_LINK"
+  | "PASSWORD_RESET"
   | "REVIEW_REMINDER"
   | "EXPORT_DELIVERY"
   | "ACTION_ASSIGNED"

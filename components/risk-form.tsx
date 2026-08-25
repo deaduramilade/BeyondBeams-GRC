@@ -14,7 +14,7 @@ import { ComplianceBrowser } from "@/components/compliance-browser";
 import { FrameworkControlPicker, type FrameworkControlOption } from "@/components/framework-control-picker";
 import { formatEnum, riskLevel } from "@/lib/utils";
 
-type EditableRisk = { id: string; title: string; description: string; category: RiskCategory; ownerId: string; inherentLikelihood: number; inherentImpact: number; residualLikelihood: number | null; residualImpact: number | null; treatment: RiskTreatment; status: RiskStatus; nextReviewDate: string };
+type EditableRisk = { id: string; version: number; title: string; description: string; category: RiskCategory; ownerId: string; inherentLikelihood: number; inherentImpact: number; residualLikelihood: number | null; residualImpact: number | null; treatment: RiskTreatment; status: RiskStatus; nextReviewDate: string };
 type Ref = { id: string; framework: string; jurisdiction: string; reference: string; title: string; excerpt: string; metric: string | null; sourceUrl: string; industry: string };
 const cls = "h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring";
 
@@ -28,7 +28,7 @@ export function RiskForm({ users, risk, references = [], controls = [], mappedCo
     const input = { title: String(form.get("title")), description: String(form.get("description")), category: form.get("category") as RiskCategory, ownerId: String(form.get("ownerId")), inherentLikelihood: Number(form.get("inherentLikelihood")), inherentImpact: Number(form.get("inherentImpact")), residualLikelihood: form.get("residualLikelihood") ? Number(form.get("residualLikelihood")) : null, residualImpact: form.get("residualImpact") ? Number(form.get("residualImpact")) : null, treatment: form.get("treatment") as RiskTreatment, status: form.get("status") as RiskStatus, nextReviewDate: new Date(`${form.get("nextReviewDate")}T12:00:00`) };
     const controlIds = form.getAll("controlIds").map(String);
     start(async () => {
-      const result = risk ? await updateRisk(risk.id, input) : await createRisk(input);
+      const result = risk ? await updateRisk(risk.id, input, risk.version) : await createRisk(input);
       if ("error" in result) { setError(result.error ?? "Unable to save this risk."); return; }
       const riskId = risk?.id ?? ("id" in result ? result.id : "");
       const mapping = await syncRiskControlMappings(riskId, controlIds);

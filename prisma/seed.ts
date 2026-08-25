@@ -22,6 +22,8 @@ async function main() {
   const tenant = await db.tenant.upsert({ where: { slug: "beyondbeams-demo" }, update: { plan: Plan.PROFESSIONAL }, create: { name: "BeyondBeams Demo", slug: "beyondbeams-demo", plan: Plan.PROFESSIONAL } });
   const user = await db.user.upsert({ where: { email: "owner@beyondbeams.com" }, update: { passwordHash, tenantId: tenant.id, translatorUses: 0, paidPlan: false }, create: { email: "owner@beyondbeams.com", name: "Maya Chen", passwordHash, tenantId: tenant.id } });
   await db.membership.upsert({ where: { tenantId_userId: { tenantId: tenant.id, userId: user.id } }, update: { role: Role.OWNER, acceptedAt: new Date(), inviteEmail: null, inviteToken: null, inviteExpires: null }, create: { tenantId: tenant.id, userId: user.id, role: Role.OWNER, acceptedAt: new Date() } });
+  // Local assessment reset only. Production roles must not receive audit UPDATE/DELETE grants.
+  if (process.env.NODE_ENV === "production") throw new Error("The demo seed must never run in production.");
   await db.auditEvent.deleteMany({ where: { tenantId: tenant.id } });
   await db.exportHistory.deleteMany({ where: { tenantId: tenant.id } });
   await db.savedReport.deleteMany({ where: { tenantId: tenant.id } });
@@ -30,6 +32,7 @@ async function main() {
   await ensureTenantFrameworks(tenant.id);
   await db.emergingRisk.deleteMany({ where: { tenantId: tenant.id } });
   await db.risk.deleteMany({ where: { tenantId: tenant.id } });
+  await db.tenantSequence.upsert({ where: { tenantId_name: { tenantId: tenant.id, name: "risk" } }, update: { value: 28 }, create: { tenantId: tenant.id, name: "risk", value: 28 } });
   await db.grcRecord.deleteMany({ where: { tenantId: tenant.id } });
   for (const reference of complianceCatalog) await db.complianceReference.upsert({ where: { tenantId_framework_reference: { tenantId: tenant.id, framework: reference.framework, reference: reference.reference } }, update: { ...reference }, create: { tenantId: tenant.id, ...reference } });
   for (const [index, item] of risks.entries()) {
