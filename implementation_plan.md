@@ -2,7 +2,7 @@
 
 > Historical planning input. The canonical application is now the root Next.js 15 App Router project. Use [docs/DEVELOPMENT_STATUS.md](docs/DEVELOPMENT_STATUS.md) and [docs/ROADMAP.md](docs/ROADMAP.md) for current status and sequencing; the React/Vite + FastAPI structure below is retained for traceability only.
 
-Phase 2 local governance actions have since been implemented in `app/actions/governance.ts`, with tenant-safe evidence/control validation, residual-assessment prerequisites, treatment-action updates, and appetite-breach resolution. Do not use the unexecuted file list below as a claim of current gaps.
+Phase 2 local governance actions have since been implemented in `app/actions/governance.ts`, with tenant-safe evidence/control validation, residual-assessment prerequisites, treatment-action updates, and appetite-breach resolution. The Phase 3 increment also adds framework source/applicability metadata, tenant-scoped organisational context links on risks, selectors in risk/governance forms, and the PostgreSQL migration `20260825120000_phase3_context_governance`. Do not use the unexecuted file list below as a claim of current gaps; use `docs/DEVELOPMENT_STATUS.md`, `docs/RELEASE_STATUS.md`, and `docs/ROADMAP.md` for current truth.
 
 ## Overview
 

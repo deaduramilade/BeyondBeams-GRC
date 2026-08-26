@@ -2,7 +2,7 @@
 
 **Updated:** 2026-08-25
 **Branch:** `feature/release-foundation`  
-**Scope:** Phase 1 release foundation for the Next.js GRC application
+**Scope:** Phase 1 foundation plus local Phase 2 governance and Phase 3 framework/context increment for the Next.js GRC application
 
 For the complete developed/partial/not-developed inventory grouped into five phases, see [DEVELOPMENT_STATUS.md](DEVELOPMENT_STATUS.md). This document remains focused on release evidence and blockers.
 
@@ -45,7 +45,26 @@ Railway deployment was not completed because the Railway CLI is not installed in
 - Add integration and end-to-end coverage for tenant isolation, permissions, invitations, reports, and authenticated workflows.
 - Move report artifacts to private tenant-scoped object storage or enforce a documented size and retention limit.
 - Add durable report/notification jobs, provider retries, bounce handling, observability, backups, and restore testing.
-- Complete the governed GRC domain: versioned assessments, approval gates, lifecycle transitions, treatment actions, evidence, appetite, configurable taxonomy, retention, and legal hold.
+- Complete the governed GRC domain: dedicated lifecycle views, evidence storage/scanning, control test history, configurable scoring, retention, and legal hold.
+- Rehearse the Phase 3 context migration against PostgreSQL and add integration coverage for taxonomy tenant isolation, framework applicability review, and report context reconciliation.
+
+## Phase 2 and Phase 3 delivery report
+
+### Phase 2 — Governed risk lifecycle
+
+**Implemented locally:** versioned inherent/residual assessments; submission and approval with separation of duties; lifecycle transition rules; treatment plans and actions; control profiles; tenant-safe evidence metadata; appetite statements and auditable breach resolution; taxonomy records; permission checks; optimistic risk revisions; atomic risk/audit creation; and focused policy tests.
+
+**Evidence:** `app/actions/governance.ts`, `lib/risk-lifecycle.ts`, `lib/phase2-policy.ts`, `/app/governance`, Prisma assessment/treatment/control/evidence/appetite/taxonomy models, and `tests/release-foundation.test.ts`.
+
+**Limitations:** the UI is still a consolidated workbench; action history/dependencies, private evidence upload and malware scanning, control test-result history, configurable scoring policies, PostgreSQL concurrency, authenticated browser journeys, and full tenant/role integration coverage remain open.
+
+### Phase 3 — Frameworks, compliance, and organisational context
+
+**Implemented locally:** ISO 27001, NIST CSF 2.0, SOC 2, HIPAA Security Rule, and fintech/payment catalogue seed data; workspace enablement and plan limits; control browsing and risk mapping; unmapped-risk and gap-analysis views; curated compliance references; emerging-risk monitoring and promotion; industry library; board-language translation limits; framework source/applicability metadata; tenant-scoped business unit, objective, risk source, and regulatory-domain links on risks; server validation of those links; and export inclusion of context identifiers.
+
+**Governance boundary:** framework content is a curated reference aid. It does not certify a workspace, provide legal advice, establish applicability, or make an authoritative conformance claim. Customers must confirm current source text, scope, contractual obligations, jurisdiction, and evidence with their accountable compliance/legal professionals.
+
+**Remaining Phase 3 work:** human-readable taxonomy joins in filters/analytics/reports; mapping applicability review UI; evidence-backed control testing and effectiveness rollups; catalogue change/version history; organisation-specific control administration; private evidence storage/scanning/signed delivery; and separate vendor-risk/incident-management designs.
 
 ## Phase 2 — Security and correctness implementation
 

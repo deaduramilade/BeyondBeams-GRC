@@ -23,7 +23,7 @@ On Windows PowerShell, use `Copy-Item .env.example .env` instead of `cp`. Open [
 
 The seed creates one demo tenant, one Owner membership, eight realistic sample risks, worldwide compliance references and linkages, workflow examples, and one emerging-risk monitoring case. To choose a local seed login password, set the untracked `SEED_DEMO_PASSWORD` value in `.env`; otherwise the seed generates a random password and does not print it or store it in the repository.
 
-Framework mapping is available at `/app/frameworks`. Owners and Risk Managers can enable frameworks; risk writers can search and map enabled controls while creating, editing, or viewing a risk. Free and Basic workspaces have framework and mapping limits, while Professional and Premium workspaces can use all included ISO 27001, NIST CSF 2.0, SOC 2, HIPAA, and fintech controls.
+Framework mapping is available at `/app/frameworks`. Owners and Risk Managers can enable frameworks; risk writers can search and map enabled controls while creating, editing, or viewing a risk. Risk forms also accept tenant-owned business unit, objective, risk source, and regulatory-domain context when those taxonomy items have been configured in Governance. Free and Basic workspaces have framework and mapping limits, while Professional and Premium workspaces can use all included ISO 27001, NIST CSF 2.0, SOC 2, HIPAA, and fintech controls.
 
 ## Commands
 
@@ -60,7 +60,7 @@ The Settings page can email a Board PDF, Excel/CSV risk register, or audit expor
 
 All risk and audit operations derive `tenantId` from the authenticated server session. Owner, Risk Manager, and Assessor roles may create or edit risks; Owner and Risk Manager may delete; Viewer and Auditor are read-only. Deletes are soft deletes and create audit events.
 
-The public landing page is `/`. Authenticated tools are under `/app`; risk creation and reassessment automatically persist relevant compliance references. Compliance excerpts are curated assessment aids with links to official sources and should be checked for current applicability. Each user has three free board-language translations unless `paidPlan` is enabled.
+The public landing page is `/`. Authenticated tools are under `/app`; risk creation and reassessment automatically persist relevant compliance references. Compliance excerpts and framework mappings are curated governance aids with links/source metadata and must be checked against current official material and organisation-specific applicability. They do not provide legal advice, certification, or an authoritative conformance opinion. Each user has three free board-language translations unless `paidPlan` is enabled.
 
 ## Production notes
 

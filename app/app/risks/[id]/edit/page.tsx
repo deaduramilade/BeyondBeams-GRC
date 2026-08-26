@@ -12,12 +12,13 @@ export default async function EditRiskPage({ params }: { params: Promise<{ id: s
   const { id } = await params;
   await ensureComplianceCatalog(session.user.tenantId);
   await ensureTenantFrameworks(session.user.tenantId);
-  const [risk, users, references, controls] = await Promise.all([
+  const [risk, users, references, controls, taxonomy] = await Promise.all([
     db.risk.findFirst({ where: { id, tenantId: session.user.tenantId, deletedAt: null }, include: { frameworkMappings: { select: { frameworkControlId: true } } } }),
     db.user.findMany({ where: { tenantId: session.user.tenantId }, select: { id: true, name: true } }),
     db.complianceReference.findMany({ where: { tenantId: session.user.tenantId }, orderBy: { framework: "asc" } }),
     enabledControls(session.user.tenantId),
+    db.taxonomyItem.findMany({ where: { tenantId: session.user.tenantId, active: true }, orderBy: [{ type: "asc" }, { sortOrder: "asc" }, { name: "asc" }] }),
   ]);
   if (!risk) notFound();
-  return <><PageHeader eyebrow={risk.reference} title="Edit risk" description="Update the assessment and review the obligations triggered by its scope."/><RiskForm users={users} references={references} controls={controls} mappedControlIds={risk.frameworkMappings.map((mapping: Prisma.RiskFrameworkMappingGetPayload<{ select: { frameworkControlId: true } }>) => mapping.frameworkControlId)} risk={{ ...risk, nextReviewDate: risk.nextReviewDate.toISOString().slice(0, 10) }}/></>;
+  return <><PageHeader eyebrow={risk.reference} title="Edit risk" description="Update the assessment, organisational context, and obligations triggered by its scope."/><RiskForm users={users} references={references} controls={controls} taxonomy={taxonomy} mappedControlIds={risk.frameworkMappings.map((mapping: Prisma.RiskFrameworkMappingGetPayload<{ select: { frameworkControlId: true } }>) => mapping.frameworkControlId)} risk={{ ...risk, nextReviewDate: risk.nextReviewDate.toISOString().slice(0, 10) }}/></>;
 }
