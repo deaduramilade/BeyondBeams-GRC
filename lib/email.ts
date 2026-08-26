@@ -14,7 +14,7 @@ export type NotificationType =
   | "EMERGING_RISK_SETTLED"
   | "TREATMENT_CHANGED";
 
-type EmailInput = {
+export type EmailInput = {
   tenantId: string;
   userId?: string;
   recipient: string;

@@ -1,6 +1,6 @@
 # Development Status
 
-**Updated:** 2026-08-25
+**Updated:** 2026-08-26
 **Canonical application:** root Next.js 15 App Router application  
 **Status:** suitable for controlled local assessment and staging preparation; not approved for live customer data
 
@@ -79,16 +79,19 @@ This document is the current capability inventory. It reconciles the `.clinerule
 - Dashboard risk counts, exposure bands, review-due indicators, priority-risk views, category concentration insights, risk-register CSV/XLSX exports, board PDF, gap-analysis PDF, and audit export.
 - Tenant-scoped report records/download flow, hashed single-use expiring report tokens, private no-store download responses, export quotas, audit records, and local preview email delivery.
 - Review reminders, notification preferences, lifecycle emails for key risk/workflow events, authenticated reminder dispatch, and idempotent reminder behavior.
+- Tenant-scoped analytics API with reconciled exposure, governance coverage, appetite, overdue-work, and score-band metrics; accessible residual/inherent heat-map table; and focused analytics tests.
+- Risk-register and audit exports now generate requested CSV, XLSX, or PDF formats with matching filenames and content types. Invalid formats are rejected for PDF-only reports.
+- Permission-checked retry action for failed notification records, preserving tenant scope and auditability.
 
 **Partially developed**
 
-- Reporting is synchronous/local and stores artifacts in the database for assessment; background jobs, private tenant-scoped object storage, PDF/report queueing, retention cleanup, checksums, and production provider retries are outstanding.
-- Insights are useful portfolio summaries, but trend snapshots, configurable KPI definitions, reconciliation controls, heat-map drill-down/modes, and full management report catalogue are incomplete.
-- Notification delivery has local/provider adapters and audit records, but durable outbox/queue processing, bounce handling, retry operations, digest scheduling, and escalation policies are incomplete.
+- Reporting is synchronous/local and stores artifacts in the database for assessment; background jobs, private tenant-scoped object storage, retention cleanup, checksums, and production provider retries are outstanding.
+- Insights now provide reconciled live metrics and heat-map data, but immutable trend snapshots, configurable KPI definitions, point-in-time report reads, and the full management report catalogue are incomplete.
+- Notification delivery has local/provider adapters, audit records, and an administrator retry action, but durable outbox/queue processing, attempt history, bounce handling, provider webhooks, digest scheduling, and escalation policies are incomplete.
 
 **Not developed**
 
-- A production-grade analytics warehouse or independently reconciled historical trend pipeline.
+- A production-grade analytics warehouse or independently operated historical trend pipeline remains not developed.
 
 ### Phase 5 - Production assurance and operations
 

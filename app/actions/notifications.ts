@@ -4,7 +4,8 @@ import { Role } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { requireSession } from "@/lib/authz";
+import { requirePermission, requireSession } from "@/lib/authz";
+import { sendNotificationEmail, type EmailInput } from "@/lib/email";
 
 const preferences = z.object({ reviewEmailsEnabled: z.boolean(), assignmentEmailsEnabled: z.boolean(), exportEmailsEnabled: z.boolean() });
 export async function updateNotificationPreferences(input: z.input<typeof preferences>) {
@@ -29,4 +30,14 @@ export async function updateReviewReminderSettings(input: z.input<typeof tenantS
   await db.auditEvent.create({ data: { tenantId: session.user.tenantId, actorId: session.user.id, action: "UPDATE", entityType: "TenantNotificationSettings", entityId: session.user.tenantId, summary: "Updated review reminder settings" } });
   revalidatePath("/app/settings");
   return { success: true };
+}
+
+export async function retryFailedNotification(notificationId: string) {
+  const session = await requirePermission("settings:manage");
+  const notification = await db.notification.findFirst({ where: { id: notificationId, tenantId: session.user.tenantId, status: "FAILED" } });
+  if (!notification) return { error: "Failed notification not found." };
+  const supportedTypes = ["INVITATION", "MAGIC_LINK", "PASSWORD_RESET", "REVIEW_REMINDER", "EXPORT_DELIVERY", "ACTION_ASSIGNED", "ACTION_OVERDUE", "HIGH_RESIDUAL_RISK", "EMERGING_RISK_SETTLED", "TREATMENT_CHANGED"];
+  if (!supportedTypes.includes(notification.type)) return { error: "This notification type cannot be retried." };
+  const result = await sendNotificationEmail({ tenantId: session.user.tenantId, userId: notification.userId ?? undefined, recipient: notification.recipient, type: notification.type as EmailInput["type"], subject: notification.subject, eyebrow: "Retry delivery", heading: notification.subject, paragraphs: ["This notification is being retried after a previous delivery failure."], relatedEntityType: notification.relatedEntityType ?? undefined, relatedEntityId: notification.relatedEntityId ?? undefined, dedupeKey: `retry:${notification.id}:${Date.now()}` });
+  return result.sent ? { success: true } : { error: "Notification retry failed." };
 }

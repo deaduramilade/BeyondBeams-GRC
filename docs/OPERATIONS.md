@@ -16,6 +16,7 @@ From the repository root, install dependencies, copy `.env.example` to `.env`, r
 - Owners and Risk Managers must enroll in TOTP MFA before production access. Store `AUTH_SECRET` only in the managed secret store; it encrypts MFA secrets and signs sessions.
 - Deployment probes: `GET /api/health` is a dependency-free liveness check; `GET /api/ready` verifies database connectivity and returns HTTP 503 without exposing database details when unavailable.
 - Phase 2 policy tests verify that residual assessments require approved inherent context, control owners belong to the tenant, evidence links resolve only inside the tenant, treatment actions can be audited through state changes, and appetite breaches require a reasoned resolution.
+- Phase 4 analytics are available at `GET /api/analytics` and are private, tenant-scoped, and non-cacheable. The insights page includes a semantic table alternative to the heat map. Risk-register and audit reports support CSV/XLSX/PDF with format-matching response headers.
 
 ## Data and security
 - Local `.env` files are never committed.
@@ -23,6 +24,7 @@ From the repository root, install dependencies, copy `.env.example` to `.env`, r
 - Production secrets belong in a managed secret store.
 - The application enforces tenant scope and role checks server-side; UI controls are not security boundaries. Tenant isolation still needs a dedicated automated integration test matrix before public exposure.
 - Logs must avoid passwords, tokens, sensitive personal data, and full evidence contents.
+- Failed notification retries are administrator-only and create a new delivery/audit record. Do not replay notification bearer links outside their original expiry policy.
 - Framework catalogue source/applicability metadata and risk taxonomy context are governance records, not certification evidence by themselves. Reconcile source versions and applicability with the accountable compliance owner before external reporting.
 - The Phase 3 context migration is `prisma/migrations/20260825120000_phase3_context_governance`; apply it only through `npm run db:migrate:deploy` in PostgreSQL rehearsal or deployment environments.
 - PostgreSQL audit protection: the security migration installs an append-only trigger and revokes `UPDATE`, `DELETE`, and `TRUNCATE` from `PUBLIC`. Production database ownership must remain with a migration/administration role separate from the runtime role; verify those grants during migration rehearsal.

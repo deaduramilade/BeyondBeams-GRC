@@ -4,6 +4,8 @@
 **Branch:** `feature/release-foundation`  
 **Scope:** Phase 1 foundation plus local Phase 2 governance and Phase 3 framework/context increment for the Next.js GRC application
 
+Phase 4 delivery details, verification boundaries, and completion path are documented in [PHASE_4_DELIVERY.md](PHASE_4_DELIVERY.md).
+
 For the complete developed/partial/not-developed inventory grouped into five phases, see [DEVELOPMENT_STATUS.md](DEVELOPMENT_STATUS.md). This document remains focused on release evidence and blockers.
 
 ## Implemented in this phase
@@ -17,6 +19,7 @@ For the complete developed/partial/not-developed inventory grouped into five pha
 - GitHub Actions checks for typecheck, lint, tests, Prisma validation, and production build.
 - Responsive shell improvements, mobile navigation behavior, touch target sizing, and login form accessibility/autocomplete.
 - Dependency-free liveness and database-backed readiness probes at `/api/health` and `/api/ready`.
+- Tenant-scoped analytics API and insights heat-map/reconciliation view; requested-format risk and audit exports; and permission-checked failed-notification retry action.
 
 ## Verification evidence
 
@@ -44,7 +47,7 @@ Railway deployment was not completed because the Railway CLI is not installed in
 - Deploy and rehearse the PostgreSQL migration against a real disposable PostgreSQL database.
 - Add integration and end-to-end coverage for tenant isolation, permissions, invitations, reports, and authenticated workflows.
 - Move report artifacts to private tenant-scoped object storage or enforce a documented size and retention limit.
-- Add durable report/notification jobs, provider retries, bounce handling, observability, backups, and restore testing.
+- Add durable report/notification jobs, provider retries, attempt history, bounce handling, observability, backups, and restore testing.
 - Complete the governed GRC domain: dedicated lifecycle views, evidence storage/scanning, control test history, configurable scoring, retention, and legal hold.
 - Rehearse the Phase 3 context migration against PostgreSQL and add integration coverage for taxonomy tenant isolation, framework applicability review, and report context reconciliation.
 
@@ -80,6 +83,7 @@ Implemented locally, pending PostgreSQL rehearsal and authenticated browser acce
 - Audit writes are centralized through an append helper; no application edit/delete path is provided. The PostgreSQL migration now revokes update/delete/truncate privileges on audit events from `PUBLIC`; production role separation and a live privilege-rehearsal check remain outstanding.
 - Phase 2 security tests cover permission denial, TOTP, one-way tokens, tenant predicate contract, and optimistic revisions. Full PostgreSQL integration/concurrency tests require a disposable PostgreSQL service.
 - Phase 2 policy tests cover residual-assessment prerequisites, control state validation, and appetite resolution states. Server actions validate evidence/control ownership within the authenticated tenant.
+- Phase 4 analytics tests cover score bands, inherent/residual heat-map placement, empty portfolios, exposure reconciliation, overdue work, and coverage percentages. Report-format behavior is implemented but still needs authenticated endpoint integration tests.
 
 ### Local assessment test path
 
