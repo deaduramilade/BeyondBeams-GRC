@@ -209,6 +209,7 @@ model User {
   generatedExports              ExportHistory[]
   savedReports                  SavedReport[]
   riskMappings                  RiskFrameworkMapping[]
+  reviewedFrameworkMappings     RiskFrameworkMapping[] @relation("FrameworkMappingReviewer")
   reviewEmailsEnabled           Boolean                @default(true)
   assignmentEmailsEnabled       Boolean                @default(true)
   exportEmailsEnabled           Boolean                @default(true)
@@ -297,6 +298,10 @@ model Risk {
   title              String
   description        String
   category           RiskCategory
+  businessUnitId     String?
+  objectiveId        String?
+  riskSourceId       String?
+  regulatoryDomainId String?
   ownerId            String
   inherentLikelihood Int
   inherentImpact     Int
@@ -313,6 +318,10 @@ model Risk {
   version            Int                    @default(1)
   tenant             Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   owner              User                   @relation("RiskOwner", fields: [ownerId], references: [id])
+  businessUnit       TaxonomyItem?          @relation("RiskBusinessUnit", fields: [businessUnitId], references: [id], onDelete: SetNull)
+  objective          TaxonomyItem?          @relation("RiskObjective", fields: [objectiveId], references: [id], onDelete: SetNull)
+  riskSource         TaxonomyItem?          @relation("RiskSource", fields: [riskSourceId], references: [id], onDelete: SetNull)
+  regulatoryDomain   TaxonomyItem?          @relation("RiskRegulatoryDomain", fields: [regulatoryDomainId], references: [id], onDelete: SetNull)
   auditEvents        AuditEvent[]
   complianceLinks    RiskComplianceLink[]
   emergingSource     EmergingRisk?          @relation("PromotedRisk")
@@ -518,6 +527,10 @@ model TaxonomyItem {
   updatedAt          DateTime            @updatedAt
   tenant             Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   appetiteStatements AppetiteStatement[]
+  businessUnitRisks  Risk[]              @relation("RiskBusinessUnit")
+  objectiveRisks     Risk[]              @relation("RiskObjective")
+  sourceRisks        Risk[]              @relation("RiskSource")
+  regulatoryRisks    Risk[]              @relation("RiskRegulatoryDomain")
 
   @@unique([tenantId, type, name])
   @@index([tenantId, type, active, sortOrder])
@@ -529,6 +542,11 @@ model Framework {
   version          String
   description      String
   industryTags     String
+  sourceUrl        String?
+  publicationDate  DateTime?
+  lastReviewedAt   DateTime?
+  contentOwner     String?
+  applicability    String?
   controls         FrameworkControl[]
   tenantSelections TenantFramework[]
   createdAt        DateTime           @default(now())
@@ -574,9 +592,13 @@ model RiskFrameworkMapping {
   mappedBy           String
   mappedAt           DateTime         @default(now())
   notes              String?
+  applicability      String?
+  reviewedAt         DateTime?
+  reviewedById       String?
   risk               Risk             @relation(fields: [riskId], references: [id], onDelete: Cascade)
   frameworkControl   FrameworkControl @relation(fields: [frameworkControlId], references: [id], onDelete: Cascade)
   mapper             User             @relation(fields: [mappedBy], references: [id])
+  reviewedBy         User?            @relation("FrameworkMappingReviewer", fields: [reviewedById], references: [id])
 
   @@unique([riskId, frameworkControlId])
   @@index([riskId])

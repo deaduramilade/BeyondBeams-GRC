@@ -3,6 +3,14 @@
 **Status:** Accepted
 The product uses `likelihood × impact` with a 1–5 scale and explicit Low, Moderate, High, and Critical bands. The backend is authoritative for API-created and API-updated assessments. Policy changes must be versioned so historical assessments remain interpretable.
 
+## ADR-007 — Framework content is reference material
+**Status:** Accepted
+Framework and compliance catalogue entries must retain source, publication/review, content-owner, and applicability metadata where available. The product may support mapping and evidence governance, but must not represent mappings as certification, legal advice, or authoritative conformance. Applicability remains an accountable human decision and must be recorded against organisation-specific mappings.
+
+## ADR-008 — Organisational context is tenant-owned
+**Status:** Accepted
+Risk records may reference tenant-owned taxonomy items for business unit, objective, risk source, and regulatory domain. The server validates every supplied context ID against the authenticated tenant and active state. The legacy `RiskCategory` enum remains the stable scoring/reporting classification until a future migration replaces it with a fully configurable taxonomy.
+
 ## ADR-002 — Separate inherent and residual risk
 **Status:** Accepted
 Inherent risk describes exposure before controls. Residual risk describes exposure after controls and treatment. They must be stored as separate assessments, never overwritten.

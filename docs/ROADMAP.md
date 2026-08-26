@@ -12,7 +12,7 @@ Risk CRUD and local governance workflows are developed. Server-side lifecycle in
 
 ## Phase 3 - Frameworks and organisational context
 
-Framework catalogues, mappings, compliance references, emerging risks, and supporting libraries are developed locally. Expand versioned/applicable framework administration and integrate taxonomy across the product. Vendor risk, incidents, and certification claims remain out of scope until separately designed.
+Framework catalogues, mappings, compliance references, emerging risks, and supporting libraries are developed locally. Framework records now carry source, owner, review, publication, and applicability metadata; risks can reference tenant-owned business units, objectives, risk sources, and regulatory domains with server-side tenant validation. Next: human-readable taxonomy joins, mapping review UI, evidence-backed control testing, catalogue change history, and PostgreSQL rehearsal. Vendor risk, incidents, and certification claims remain out of scope until separately designed.
 
 ## Phase 4 - Insights, reporting, and notifications
 

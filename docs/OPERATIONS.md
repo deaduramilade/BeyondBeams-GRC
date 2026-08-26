@@ -23,6 +23,8 @@ From the repository root, install dependencies, copy `.env.example` to `.env`, r
 - Production secrets belong in a managed secret store.
 - The application enforces tenant scope and role checks server-side; UI controls are not security boundaries. Tenant isolation still needs a dedicated automated integration test matrix before public exposure.
 - Logs must avoid passwords, tokens, sensitive personal data, and full evidence contents.
+- Framework catalogue source/applicability metadata and risk taxonomy context are governance records, not certification evidence by themselves. Reconcile source versions and applicability with the accountable compliance owner before external reporting.
+- The Phase 3 context migration is `prisma/migrations/20260825120000_phase3_context_governance`; apply it only through `npm run db:migrate:deploy` in PostgreSQL rehearsal or deployment environments.
 - PostgreSQL audit protection: the security migration installs an append-only trigger and revokes `UPDATE`, `DELETE`, and `TRUNCATE` from `PUBLIC`. Production database ownership must remain with a migration/administration role separate from the runtime role; verify those grants during migration rehearsal.
 
 ## Change discipline

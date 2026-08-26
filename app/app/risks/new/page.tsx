@@ -9,10 +9,11 @@ export default async function NewRiskPage() {
   const session = await requireRole(writeRoles);
   await ensureComplianceCatalog(session.user.tenantId);
   await ensureTenantFrameworks(session.user.tenantId);
-  const [users, references, controls] = await Promise.all([
+  const [users, references, controls, taxonomy] = await Promise.all([
     db.user.findMany({ where: { tenantId: session.user.tenantId }, select: { id: true, name: true } }),
     db.complianceReference.findMany({ where: { tenantId: session.user.tenantId }, orderBy: { framework: "asc" } }),
     enabledControls(session.user.tenantId),
+    db.taxonomyItem.findMany({ where: { tenantId: session.user.tenantId, active: true }, orderBy: [{ type: "asc" }, { sortOrder: "asc" }, { name: "asc" }] }),
   ]);
-  return <><PageHeader eyebrow="Risk register" title="Add a new risk" description="Describe the uncertain event, assess its initial exposure, and review worldwide obligations in context."/><RiskForm users={users} references={references} controls={controls}/></>;
+  return <><PageHeader eyebrow="Risk register" title="Add a new risk" description="Describe the uncertain event, assess its initial exposure, and record the organisational context that makes the risk meaningful."/><RiskForm users={users} references={references} controls={controls} taxonomy={taxonomy}/></>;
 }

@@ -65,8 +65,8 @@ This document is the current capability inventory. It reconciles the `.clinerule
 
 **Partially developed**
 
-- Framework mapping is a governance aid, not certification; catalogue breadth, organisation-specific mapping administration, evidence linkage, control testing, and applicability/version management need expansion.
-- Taxonomy storage exists, but taxonomy administration is not yet integrated throughout risk forms, filters, analytics, and reports.
+- Framework mapping is a governance aid, not certification. This increment adds catalogue source/applicability metadata, publication/review ownership fields, a PostgreSQL migration, and tenant-scoped organisational-context selectors on risk records. Control evidence linkage and control testing remain partial: profiles and evidence metadata exist, but private file storage, scanning, test-result history, and effectiveness rollups are not production-ready.
+- Taxonomy administration now feeds risk create/edit forms and is validated server-side for tenant ownership. Context identifiers are included in risk exports, while human-readable taxonomy joins in analytics, filters, and historical reporting remain the next integration step.
 
 **Not developed**
 
@@ -110,8 +110,9 @@ This document is the current capability inventory. It reconciles the `.clinerule
 1. Rehearse the PostgreSQL migration and verify the append-only grants with separated migration/runtime roles, then run a full tenant/role/concurrency integration matrix.
 2. Finish production-safe storage and job processing for reports, evidence, and notifications.
 3. Complete the governed lifecycle UI and validate approvals, treatment, controls, evidence, appetite, reviews, and transitions end to end.
-4. Add trend/heat-map/report reconciliation and complete accessibility/E2E coverage.
-5. Deploy only after backups, restore testing, observability, security review, rollback, and operational ownership are verified.
+4. Add human-readable taxonomy joins to filters, analytics, and reports; add control applicability review and evidence-backed test history.
+5. Add trend/heat-map/report reconciliation and complete accessibility/E2E coverage.
+6. Deploy only after backups, restore testing, observability, security review, rollback, and operational ownership are verified.
 
 ## Documentation authority
 
