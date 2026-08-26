@@ -2,6 +2,8 @@
 
 The current five-phase inventory is maintained in [DEVELOPMENT_STATUS.md](DEVELOPMENT_STATUS.md). This roadmap sequences the remaining work without treating schema-only models or navigation placeholders as delivered features.
 
+The detailed Phase 4 delivery report is maintained in [PHASE_4_DELIVERY.md](PHASE_4_DELIVERY.md).
+
 ## Phase 1 - Trusted foundation and access
 
 Core authentication, tenant scope, permissions, risk references, optimistic updates, security headers, rate limiting, CI, focused tests, liveness/readiness probes, and the PostgreSQL append-only privilege policy are developed locally. Complete PostgreSQL rehearsal, integration coverage, production role separation, and hosted deployment preparation.
@@ -16,7 +18,7 @@ Framework catalogues, mappings, compliance references, emerging risks, and suppo
 
 ## Phase 4 - Insights, reporting, and notifications
 
-Local dashboards, exports, PDF reports, report links, email previews, and reminders are developed. Move artifacts and dispatch to durable production services, then complete trend snapshots, heat maps, report reconciliation, retries, bounce handling, and escalation.
+Local analytics, reconciled KPIs, accessible heat maps, CSV/XLSX/PDF exports, report-format validation, report links, email previews, reminders, and permission-checked notification retries are developed. Move artifacts and dispatch to durable production services, then complete trend snapshots, point-in-time report reconciliation, provider webhooks, bounce handling, and escalation.
 
 ## Phase 5 - Production assurance and operations
 

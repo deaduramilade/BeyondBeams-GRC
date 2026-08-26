@@ -24,6 +24,23 @@ function riskRows(risks: RiskExportRow[]) {
 }
 export const riskHeaders = ["Reference", "Title", "Description", "Category", "Owner", "Inherent likelihood", "Inherent impact", "Inherent score", "Residual likelihood", "Residual impact", "Residual score", "Treatment", "Status", "Next review date", "Last updated", "Business unit ID", "Objective ID", "Risk source ID", "Regulatory domain ID"];
 
+async function rowsPdf(title: string, headers: string[], rows: unknown[][]) {
+  const doc = new PDFDocument({ size: "A4", margin: 42 }); const chunks: Buffer[] = [];
+  doc.on("data", (chunk) => chunks.push(chunk));
+  doc.fillColor("#0A2540").fontSize(20).text("BEYONDBEAMS GRC");
+  doc.moveDown(0.5).fontSize(16).text(title);
+  doc.moveDown().fontSize(8).fillColor("#374151").text(`Generated ${new Date().toISOString()}`);
+  let y = 120;
+  const drawRow = (values: unknown[], header = false) => { if (y > 750) { doc.addPage(); y = 48; } doc.fillColor(header ? "#0A2540" : "#FFFFFF").rect(42, y - 3, 511, 18).fill(); doc.fillColor(header ? "#FFFFFF" : "#173746").fontSize(header ? 7 : 6).text(values.map((value) => String(value ?? "")).join(" | "), 47, y, { width: 500, ellipsis: true }); y += 20; };
+  drawRow(headers, true); rows.forEach((row) => drawRow(row));
+  doc.end(); await new Promise<void>((resolve) => doc.on("end", resolve)); return Buffer.concat(chunks);
+}
+
+export async function riskPdf(tenantId: string) {
+  const risks = await db.risk.findMany({ where: { tenantId, deletedAt: null }, include: { owner: { select: { name: true } } }, orderBy: { residualScore: "desc" } });
+  return rowsPdf("Risk register", riskHeaders, riskRows(risks));
+}
+
 export async function riskCsv(tenantId: string) {
   const risks = await db.risk.findMany({ where: { tenantId, deletedAt: null }, include: { owner: { select: { name: true } } }, orderBy: { residualScore: "desc" } });
   return [riskHeaders, ...riskRows(risks)].map((row) => row.map(csvCell).join(",")).join("\r\n");
@@ -47,6 +64,11 @@ export async function auditWorkbook(tenantId: string, from?: string, to?: string
   csv.split("\r\n").forEach((line) => sheet.addRow(line.match(/("(?:[^"]|"")*"|[^,]*)/g)?.filter((value) => value !== "," && value !== "").map((value) => value.replace(/^"|"$/g, "").replaceAll('""', '"')) ?? []));
   sheet.getRow(1).font = { bold: true, color: { argb: "FFFFFFFF" } }; sheet.getRow(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0A2540" } }; sheet.columns.forEach((column) => { column.width = 24; });
   return Buffer.from(await workbook.xlsx.writeBuffer());
+}
+
+export async function auditPdf(tenantId: string, from?: string, to?: string) {
+  const events = await db.auditEvent.findMany({ where: { tenantId, createdAt: { gte: from ? new Date(from) : undefined, lte: to ? new Date(`${to}T23:59:59.999Z`) : undefined } }, include: { actor: { select: { name: true, email: true } } }, orderBy: { createdAt: "desc" } });
+  return rowsPdf("Audit activity", ["Actor", "Email", "Entity", "Action", "Timestamp", "Summary"], events.map((event) => [event.actor.name, event.actor.email, event.entityType, event.action, event.createdAt.toISOString(), event.summary]));
 }
 
 export async function boardPdf(tenantId: string) {

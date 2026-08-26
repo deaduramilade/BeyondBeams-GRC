@@ -30,3 +30,11 @@ Support ISO 31000, NIST CSF, CIS, SOC 2, and organisation-specific taxonomies th
 ## ADR-006 — Enforce Phase 2 invariants at the server boundary
 **Status:** Accepted
 Residual assessments require an approved inherent assessment. Evidence, treatment actions, and control owners must resolve within the authenticated tenant. Treatment-action and appetite-breach state changes are audited. Client forms and route visibility are never the authority for these rules.
+
+## ADR-009 — Reconcile analytics from the transactional register
+**Status:** Accepted
+Phase 4 live analytics are calculated from tenant-scoped transactional records and expose reconciliation facts alongside KPI values. Heat-map cells use residual assessments where available and inherent assessments only when residual values are absent. Historical trends require immutable snapshots and are not inferred from current data.
+
+## ADR-010 — Match report formats to artifacts
+**Status:** Accepted
+Every report response must generate the requested format, return a matching content type and filename, and reject unsupported combinations. Board and framework gap reports are PDF-only. Report delivery remains private, single-use, expiring, and tenant-scoped.

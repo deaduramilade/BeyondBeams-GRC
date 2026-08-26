@@ -2,7 +2,7 @@
 
 BeyondBeams GRC is a multi-tenant risk register and assessment workspace built with Next.js 15, strict TypeScript, Auth.js, Prisma, Tailwind CSS, shadcn/ui, Radix UI, and SQLite for zero-setup local development. PostgreSQL is the canonical production database.
 
-Current capability and remaining work are tracked in [docs/DEVELOPMENT_STATUS.md](docs/DEVELOPMENT_STATUS.md), with release gates in [docs/RELEASE_STATUS.md](docs/RELEASE_STATUS.md). The application is suitable for controlled local assessment and staging preparation; it is not yet approved for real customer data.
+Current capability and remaining work are tracked in [docs/DEVELOPMENT_STATUS.md](docs/DEVELOPMENT_STATUS.md), with detailed Phase 4 delivery in [docs/PHASE_4_DELIVERY.md](docs/PHASE_4_DELIVERY.md) and release gates in [docs/RELEASE_STATUS.md](docs/RELEASE_STATUS.md). The application is suitable for controlled local assessment and staging preparation; it is not yet approved for real customer data.
 
 Phase 2 governance is available under `/app/governance`; the assessment, treatment, and control navigation entries open that governed workspace. Residual assessments, evidence links, control owners, treatment-action updates, and appetite-breach resolutions are validated server-side within the authenticated tenant.
 
