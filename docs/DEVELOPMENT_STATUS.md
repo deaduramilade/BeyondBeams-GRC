@@ -24,10 +24,11 @@ This document is the current capability inventory. It reconciles the `.clinerule
 - Environment validation, production fail-closed checks, security headers/CSP, timing-safe secret comparison, HMAC-keyed database-backed rate limiting, and authenticated reminder endpoint protection.
 - CI and focused Node tests for environment policy, permissions, tokens, MFA, rate limits, tenant predicate contracts, and optimistic revisions.
 - Dependency-free liveness and database-backed readiness probes at `/api/health` and `/api/ready`.
+- Guarded PostgreSQL migration rehearsal, credential-free runtime/migration role policy, CI tracked-file secret scanning, and middleware request correlation IDs.
 
 **Partially developed**
 
-- PostgreSQL migration scaffolding exists, including a PostgreSQL schema and initial migration, but migration rehearsal against a disposable or managed PostgreSQL instance is outstanding.
+- PostgreSQL migration scaffolding and a guarded rehearsal command exist, including a credential-free runtime/migration role policy; the tracked-file secret scan passes, but execution against a disposable or managed PostgreSQL instance is outstanding.
 - Authorization and tenant scoping are implemented in core paths, but a complete integration matrix across every action/API route and role is outstanding.
 - Audit events are written through a central helper and protected from product edit/delete paths; the PostgreSQL migration also revokes update/delete/truncate from `PUBLIC`, but production role separation, tamper evidence, and full metadata coverage are outstanding.
 

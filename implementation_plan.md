@@ -14,6 +14,8 @@ Most root Markdown files were imported from an unrelated Pluralbeam commerce pro
 
 Development will be delivered in three phases. Phase 1 creates the trusted multi-tenant data and security foundation. Phase 2 completes the governed risk lifecycle, including inherent and residual assessment, controls, treatment, review, approval, and heat maps. Phase 3 adds management reporting, analytics, notifications, operational hardening, and release assurance.
 
+Phase 1 local readiness tooling now includes `npm run security:scan`, guarded `npm run db:migrate:rehearse`, middleware request correlation IDs, and the credential-free PostgreSQL runtime/migration policy template in `prisma/production-roles.sql`. Their execution against real PostgreSQL and hosted infrastructure remains an external release gate.
+
 ## Types
 
 ### Shared domain types

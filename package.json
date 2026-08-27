@@ -11,10 +11,12 @@
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:migrate:deploy": "prisma migrate deploy --schema prisma/schema.postgresql.prisma",
+    "db:migrate:rehearse": "node scripts/migration-rehearsal.cjs",
     "db:validate": "node scripts/validate-prisma.cjs",
     "db:seed": "prisma db seed",
     "setup": "prisma generate && prisma db push && prisma db seed",
-    "test": "tsx --test tests/**/*.test.ts"
+    "test": "tsx --test tests/**/*.test.ts",
+    "security:scan": "node scripts/scan-secrets.cjs"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.10.0",

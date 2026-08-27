@@ -38,3 +38,11 @@ Phase 4 live analytics are calculated from tenant-scoped transactional records a
 ## ADR-010 — Match report formats to artifacts
 **Status:** Accepted
 Every report response must generate the requested format, return a matching content type and filename, and reject unsupported combinations. Board and framework gap reports are PDF-only. Report delivery remains private, single-use, expiring, and tenant-scoped.
+
+## ADR-011 — Keep migration and runtime database privileges separate
+**Status:** Accepted
+Production schema changes require a migration/administration role separate from the application runtime role. The repository provides a credential-free PostgreSQL policy template and a guarded disposable-database rehearsal command. No password, provider URL, or production grant is stored in source control.
+
+## ADR-012 — Correlate requests without trusting client identifiers
+**Status:** Accepted
+The middleware creates a fresh UUID request identifier for `/app/*` and `/api/*` responses. It is intended for support and log correlation only; authorization continues to derive from the authenticated session and tenant scope.

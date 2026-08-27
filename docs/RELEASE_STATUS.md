@@ -20,6 +20,7 @@ For the complete developed/partial/not-developed inventory grouped into five pha
 - Responsive shell improvements, mobile navigation behavior, touch target sizing, and login form accessibility/autocomplete.
 - Dependency-free liveness and database-backed readiness probes at `/api/health` and `/api/ready`.
 - Tenant-scoped analytics API and insights heat-map/reconciliation view; requested-format risk and audit exports; and permission-checked failed-notification retry action.
+- Guarded PostgreSQL migration-rehearsal command, credential-free runtime/migration role policy template, tracked-file secret scan in CI, and middleware request correlation IDs.
 
 ## Verification evidence
 
@@ -84,6 +85,7 @@ Implemented locally, pending PostgreSQL rehearsal and authenticated browser acce
 - Phase 2 security tests cover permission denial, TOTP, one-way tokens, tenant predicate contract, and optimistic revisions. Full PostgreSQL integration/concurrency tests require a disposable PostgreSQL service.
 - Phase 2 policy tests cover residual-assessment prerequisites, control state validation, and appetite resolution states. Server actions validate evidence/control ownership within the authenticated tenant.
 - Phase 4 analytics tests cover score bands, inherent/residual heat-map placement, empty portfolios, exposure reconciliation, overdue work, and coverage percentages. Report-format behavior is implemented but still needs authenticated endpoint integration tests.
+- Local secret scan passed on 2026-08-26. PostgreSQL migration rehearsal, role privilege verification, and backup/restore testing remain unexecuted because no disposable PostgreSQL service is available.
 
 ### Local assessment test path
 
