@@ -1,10 +1,10 @@
-import { Plan, PrismaClient, RiskCategory, RiskStatus, RiskTreatment, Role } from "@prisma/client";
+import { Plan, RiskCategory, RiskStatus, RiskTreatment, Role } from "@prisma/client";
 import { hash } from "bcryptjs";
 import { randomBytes } from "node:crypto";
 import { complianceCatalog, linkComplianceToRisk } from "../lib/compliance";
+import { db } from "../lib/db";
 import { ensureTenantFrameworks, seedFrameworks } from "../lib/frameworks";
 
-const db = new PrismaClient();
 const risks = [
   ["Third-party data exposure", "A critical supplier may expose regulated customer data through weak access controls.", RiskCategory.THIRD_PARTY, 5, 5, 3, 4, RiskTreatment.MITIGATE, RiskStatus.TREATMENT],
   ["Regulatory reporting delay", "Incomplete source data may delay mandatory submissions and trigger supervisory action.", RiskCategory.COMPLIANCE, 4, 4, 2, 3, RiskTreatment.MITIGATE, RiskStatus.TREATMENT],
@@ -47,4 +47,4 @@ async function main() {
   ] });
   await db.emergingRisk.create({ data: { tenantId: tenant.id, title: "AI-enabled payment fraud acceleration", hypothesis: "Low-cost generative tooling may increase the speed and credibility of social-engineering attacks against payment operations.", indicators: "Increase in voice-clone reports\nHigher payment-change request velocity\nAuthentication challenge failure trends", cadence: "MONTHLY", horizon: "3-12 MONTHS", ownerId: user.id, nextReviewDate: new Date(Date.now() + 30 * 86400000) } });
 }
-main().then(() => db.$disconnect()).catch(async (error) => { console.error(error); await db.$disconnect(); process.exit(1); });
+main().then(async () => { await db.$disconnect(); process.exit(0); }).catch(async (error) => { console.error(error); await db.$disconnect(); process.exit(1); });

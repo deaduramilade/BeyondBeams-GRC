@@ -13,7 +13,10 @@ const password = randomBytes(24).toString("base64url");
 const database = "grc_rehearsal";
 const user = "grc_rehearsal_admin";
 const port = process.env.PG_REHEARSAL_PORT ?? "55432";
-const databaseUrl = `postgresql://${encodeURIComponent(user)}:${encodeURIComponent(password)}@localhost:${port}/${database}`;
+const databaseUrlValue = new URL(`postgresql://localhost:${port}/${database}`);
+databaseUrlValue.username = user;
+databaseUrlValue.password = password;
+const databaseUrl = databaseUrlValue.toString();
 const env = { ...process.env, DATABASE_URL: databaseUrl, NODE_ENV: "test", SEED_DEMO_PASSWORD: randomBytes(24).toString("base64url") };
 const run = (file, args, options = {}) => execFileSync(file, args, { stdio: "inherit", env, ...options });
 const runQuiet = (args) => spawnSync(docker, args, { encoding: "utf8", env: process.env, stdio: ["ignore", "pipe", "pipe"] });
@@ -30,14 +33,14 @@ function waitForPostgres() {
   throw new Error("PostgreSQL did not become ready within 30 seconds.");
 }
 function tenantCounts() {
-  const script = "const {PrismaClient}=require('@prisma/client');const db=new PrismaClient();db.tenant.findUnique({where:{slug:'beyondbeams-demo'},select:{id:true,_count:{select:{risks:true}}}}).then(row=>{if(!row)process.exit(1);console.log(JSON.stringify({tenants:1,risks:row._count.risks}))}).finally(()=>db.$disconnect())";
-  const result = spawnSync(process.execPath, ["-e", script], { env, encoding: "utf8" });
+  const query = "SELECT json_build_object('tenants', COUNT(DISTINCT t.id), 'risks', COUNT(r.id)) FROM \"Tenant\" t LEFT JOIN \"Risk\" r ON r.\"tenantId\" = t.id WHERE t.slug = 'beyondbeams-demo';";
+  const result = spawnSync(docker, ["exec", container, "psql", "-At", "-U", user, "-d", database, "-c", query], { encoding: "utf8" });
   if (result.status !== 0) throw new Error("Tenant-scoped connectivity check failed.");
   return JSON.parse(result.stdout.trim());
 }
 function applyRolePolicy() {
   const sql = require("node:fs").readFileSync("prisma/production-roles.sql");
-  run(docker, ["exec", "-i", container, "psql", "-v", "ON_ERROR_STOP=1", "-U", user, "-d", database, "-f", "-"], { input: sql });
+  run(docker, ["exec", "-i", container, "psql", "-v", "ON_ERROR_STOP=1", "-U", user, "-d", database, "-f", "-"], { input: sql, stdio: ["pipe", "inherit", "inherit"] });
   const check = "SELECT has_table_privilege('grc_runtime', '\"AuditEvent\"', 'INSERT'),has_table_privilege('grc_runtime', '\"AuditEvent\"', 'UPDATE'),has_table_privilege('grc_runtime', '\"AuditEvent\"', 'DELETE'),has_table_privilege('grc_runtime', '\"AuditEvent\"', 'TRUNCATE');";
   const result = spawnSync(docker, ["exec", container, "psql", "-At", "-U", user, "-d", database, "-c", check], { encoding: "utf8" });
   if (result.status !== 0 || result.stdout.trim() !== "t|f|f|f") throw new Error("Runtime audit privileges are not append-only.");

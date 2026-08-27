@@ -23,6 +23,8 @@ export const grcNav = [
   { href: "/app/governance", label: "Governance workbench", icon: ClipboardCheck },
   { href: "/app/treatments", label: "Treatment plans", icon: ListChecks },
   { href: "/app/controls", label: "Control management", icon: SlidersHorizontal },
+  { href: "/app/reviews", label: "Risk reviews", icon: FileClock },
+  { href: "/app/evidence", label: "Evidence register", icon: FileCheck2 },
   { href: "/app/frameworks", label: "Frameworks & compliance", icon: Scale },
   { href: "/app/emerging-risks", label: "Emerging risks", icon: Radar },
   { href: "/app/vendors", label: "Third-party risk", icon: Building2 },
