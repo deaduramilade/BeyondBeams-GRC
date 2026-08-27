@@ -19,7 +19,10 @@ From the repository root, install dependencies, copy `.env.example` to `.env`, r
 - Phase 4 analytics are available at `GET /api/analytics` and are private, tenant-scoped, and non-cacheable. The insights page includes a semantic table alternative to the heat map. Risk-register and audit reports support CSV/XLSX/PDF with format-matching response headers.
 - `npm run security:scan` scans tracked non-environment files and fails on common private-key, API-key, or credentialed PostgreSQL URL patterns without printing secret values. CI runs the same check.
 - `npm run db:migrate:rehearse` is intentionally guarded by `MIGRATION_REHEARSAL=true` and a PostgreSQL `DATABASE_URL`; use it only against a disposable database because it changes the target schema.
-- Middleware adds a fresh `x-request-id` response header for `/app/*` and `/api/*` requests. It is a correlation identifier, not an authentication credential; application logs must still avoid secrets and sensitive payloads.
+- Middleware propagates `x-request-id` into downstream request headers and the response for `/app/*` and `/api/*`. The central audit helper records it with source, forwarded client address, user agent, before/after payloads, and a sensitive-change reason when supplied. It is a correlation identifier, not an authentication credential; logs must still avoid secrets and sensitive payloads.
+- `npm run db:postgres:fresh` and `npm run db:postgres:upgrade` use a self-cleaning PostgreSQL 16 Docker container. They generate random ephemeral credentials, deploy migrations, seed and verify the tenant/risk counts, apply `prisma/production-roles.sql`, prove that `grc_runtime` can insert but cannot update/delete/truncate audit rows, restore the SQLite Prisma client, and remove the container even on failure.
+- The forward-only audit-context migration is `prisma/migrations/20260827090000_phase1_audit_context`. Never move these columns into an earlier migration after that migration history may have been applied.
+- `npm run test:tenant-isolation` validates shared active-membership, tenant-risk, soft-delete, and single-use token predicates. It supplements rather than replaces the full PostgreSQL/authenticated integration matrix still required before production.
 
 ## Data and security
 - Local `.env` files are never committed.

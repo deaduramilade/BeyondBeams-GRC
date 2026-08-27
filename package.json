@@ -12,10 +12,13 @@
     "db:push": "prisma db push",
     "db:migrate:deploy": "prisma migrate deploy --schema prisma/schema.postgresql.prisma",
     "db:migrate:rehearse": "node scripts/migration-rehearsal.cjs",
+    "db:postgres:fresh": "node scripts/postgres-rehearsal.cjs",
+    "db:postgres:upgrade": "node scripts/postgres-rehearsal.cjs --mode upgrade",
     "db:validate": "node scripts/validate-prisma.cjs",
     "db:seed": "prisma db seed",
     "setup": "prisma generate && prisma db push && prisma db seed",
     "test": "tsx --test tests/**/*.test.ts",
+    "test:tenant-isolation": "tsx --test tests/phase-1-tenant-boundaries.test.ts",
     "security:scan": "node scripts/scan-secrets.cjs"
   },
   "dependencies": {
