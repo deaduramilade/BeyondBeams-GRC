@@ -31,6 +31,21 @@ enum RiskStatus {
   IN_MONITORING
   ACCEPTED
   CLOSED
+  ARCHIVED
+}
+
+enum ReviewOutcome {
+  CONTINUE
+  REASSESS
+  CLOSE
+  ESCALATE
+}
+
+enum ControlTestResult {
+  NOT_TESTED
+  PASS
+  PARTIAL
+  FAIL
 }
 
 enum RiskCategory {
@@ -138,11 +153,11 @@ enum TaxonomyType {
 }
 
 model Tenant {
-  id                     String                @id @default(cuid())
+  id                     String                   @id @default(cuid())
   name                   String
-  slug                   String                @unique
-  createdAt              DateTime              @default(now())
-  updatedAt              DateTime              @updatedAt
+  slug                   String                   @unique
+  createdAt              DateTime                 @default(now())
+  updatedAt              DateTime                 @updatedAt
   users                  User[]
   memberships            Membership[]
   risks                  Risk[]
@@ -150,12 +165,12 @@ model Tenant {
   grcRecords             GrcRecord[]
   complianceReferences   ComplianceReference[]
   emergingRisks          EmergingRisk[]
-  plan                   Plan                  @default(FREE)
+  plan                   Plan                     @default(FREE)
   exports                ExportHistory[]
   savedReports           SavedReport[]
   frameworkSelections    TenantFramework[]
-  reviewRemindersEnabled Boolean               @default(true)
-  reviewReminderCadence  String                @default("7,1,0")
+  reviewRemindersEnabled Boolean                  @default(true)
+  reviewReminderCadence  String                   @default("7,1,0")
   notifications          Notification[]
   sequences              TenantSequence[]
   assessments            Assessment[]
@@ -166,6 +181,10 @@ model Tenant {
   appetiteStatements     AppetiteStatement[]
   appetiteBreaches       AppetiteBreach[]
   taxonomyItems          TaxonomyItem[]
+  reviews                RiskReview[]
+  treatmentActionHistory TreatmentActionHistory[]
+  controlTests           ControlTest[]
+  scoringPolicies        ScoringPolicy[]
 }
 
 model RateLimitBucket {
@@ -188,45 +207,49 @@ model TenantSequence {
 }
 
 model User {
-  id                            String                 @id @default(cuid())
+  id                            String                   @id @default(cuid())
   tenantId                      String
-  email                         String                 @unique
+  email                         String                   @unique
   name                          String
   passwordHash                  String
   emailVerified                 DateTime?
   image                         String?
-  createdAt                     DateTime               @default(now())
-  updatedAt                     DateTime               @updatedAt
-  tenant                        Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdAt                     DateTime                 @default(now())
+  updatedAt                     DateTime                 @updatedAt
+  tenant                        Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   memberships                   Membership[]
-  ownedRisks                    Risk[]                 @relation("RiskOwner")
-  ownedEmergingRisks            EmergingRisk[]         @relation("EmergingRiskOwner")
-  auditEvents                   AuditEvent[]           @relation("AuditActor")
+  ownedRisks                    Risk[]                   @relation("RiskOwner")
+  ownedEmergingRisks            EmergingRisk[]           @relation("EmergingRiskOwner")
+  auditEvents                   AuditEvent[]             @relation("AuditActor")
   accounts                      Account[]
   sessions                      Session[]
-  translatorUses                Int                    @default(0)
-  paidPlan                      Boolean                @default(false)
+  translatorUses                Int                      @default(0)
+  paidPlan                      Boolean                  @default(false)
   generatedExports              ExportHistory[]
   savedReports                  SavedReport[]
   riskMappings                  RiskFrameworkMapping[]
-  reviewedFrameworkMappings     RiskFrameworkMapping[] @relation("FrameworkMappingReviewer")
-  reviewEmailsEnabled           Boolean                @default(true)
-  assignmentEmailsEnabled       Boolean                @default(true)
-  exportEmailsEnabled           Boolean                @default(true)
-  sessionVersion                Int                    @default(0)
+  reviewedFrameworkMappings     RiskFrameworkMapping[]   @relation("FrameworkMappingReviewer")
+  reviewEmailsEnabled           Boolean                  @default(true)
+  assignmentEmailsEnabled       Boolean                  @default(true)
+  exportEmailsEnabled           Boolean                  @default(true)
+  sessionVersion                Int                      @default(0)
   mfaSecret                     String?
-  mfaEnabled                    Boolean                @default(false)
+  mfaEnabled                    Boolean                  @default(false)
   mfaConfirmedAt                DateTime?
   securityOnboardingCompletedAt DateTime?
   notifications                 Notification[]
-  authoredAssessments           Assessment[]           @relation("AssessmentAuthor")
-  decidedAssessments            Assessment[]           @relation("AssessmentDecision")
-  approvalDecisions             ApprovalDecision[]     @relation("ApprovalDecider")
-  createdTreatmentPlans         TreatmentPlan[]        @relation("TreatmentPlanCreator")
-  ownedTreatmentActions         TreatmentAction[]      @relation("TreatmentActionOwner")
-  ownedControls                 ControlProfile[]       @relation("ControlOwner")
-  uploadedEvidence              Evidence[]             @relation("EvidenceUploader")
-  appetiteBreaches              AppetiteBreach[]       @relation("BreachOwner")
+  authoredAssessments           Assessment[]             @relation("AssessmentAuthor")
+  decidedAssessments            Assessment[]             @relation("AssessmentDecision")
+  approvalDecisions             ApprovalDecision[]       @relation("ApprovalDecider")
+  createdTreatmentPlans         TreatmentPlan[]          @relation("TreatmentPlanCreator")
+  ownedTreatmentActions         TreatmentAction[]        @relation("TreatmentActionOwner")
+  ownedControls                 ControlProfile[]         @relation("ControlOwner")
+  uploadedEvidence              Evidence[]               @relation("EvidenceUploader")
+  appetiteBreaches              AppetiteBreach[]         @relation("BreachOwner")
+  reviews                       RiskReview[]             @relation("RiskReviewer")
+  treatmentActionHistory        TreatmentActionHistory[] @relation("TreatmentActionHistoryActor")
+  controlTests                  ControlTest[]            @relation("ControlTester")
+  scoringPolicies               ScoringPolicy[]          @relation("ScoringPolicyCreator")
 
   @@index([tenantId])
   @@index([tenantId, email])
@@ -329,6 +352,8 @@ model Risk {
   assessments        Assessment[]
   treatmentPlans     TreatmentPlan[]
   appetiteBreaches   AppetiteBreach[]
+  reviews            RiskReview[]
+  evidence           Evidence[]
 
   @@unique([tenantId, reference])
   @@index([tenantId])
@@ -363,6 +388,26 @@ model Assessment {
 
   @@unique([riskId, type, revision])
   @@index([tenantId, riskId, status])
+}
+
+model RiskReview {
+  id                    String         @id @default(cuid())
+  tenantId              String
+  riskId                String
+  reviewerId            String
+  scheduledFor          DateTime
+  completedAt           DateTime?
+  outcome               ReviewOutcome?
+  notes                 String?
+  reassessmentRequested Boolean        @default(false)
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+  tenant                Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  risk                  Risk           @relation(fields: [riskId], references: [id], onDelete: Cascade)
+  reviewer              User           @relation("RiskReviewer", fields: [reviewerId], references: [id])
+
+  @@index([tenantId, scheduledFor])
+  @@index([tenantId, riskId, completedAt])
 }
 
 model TreatmentPlan {
@@ -401,26 +446,43 @@ model ApprovalDecision {
 }
 
 model TreatmentAction {
-  id              String                @id @default(cuid())
+  id              String                   @id @default(cuid())
   tenantId        String
   treatmentPlanId String
   title           String
   description     String
   ownerId         String
-  status          TreatmentActionStatus @default(NOT_STARTED)
-  priority        String                @default("MEDIUM")
+  status          TreatmentActionStatus    @default(NOT_STARTED)
+  priority        String                   @default("MEDIUM")
   dueDate         DateTime
   completedAt     DateTime?
   escalatedAt     DateTime?
-  escalationLevel Int                   @default(0)
-  createdAt       DateTime              @default(now())
-  updatedAt       DateTime              @updatedAt
-  tenant          Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  treatmentPlan   TreatmentPlan         @relation(fields: [treatmentPlanId], references: [id], onDelete: Cascade)
-  owner           User                  @relation("TreatmentActionOwner", fields: [ownerId], references: [id])
+  escalationLevel Int                      @default(0)
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
+  tenant          Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  treatmentPlan   TreatmentPlan            @relation(fields: [treatmentPlanId], references: [id], onDelete: Cascade)
+  owner           User                     @relation("TreatmentActionOwner", fields: [ownerId], references: [id])
   evidence        Evidence[]
+  history         TreatmentActionHistory[]
 
   @@index([tenantId, ownerId, status, dueDate])
+}
+
+model TreatmentActionHistory {
+  id                String                 @id @default(cuid())
+  tenantId          String
+  treatmentActionId String
+  actorId           String
+  fromStatus        TreatmentActionStatus?
+  toStatus          TreatmentActionStatus
+  note              String?
+  createdAt         DateTime               @default(now())
+  tenant            Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  treatmentAction   TreatmentAction        @relation(fields: [treatmentActionId], references: [id], onDelete: Cascade)
+  actor             User                   @relation("TreatmentActionHistoryActor", fields: [actorId], references: [id])
+
+  @@index([tenantId, treatmentActionId, createdAt])
 }
 
 model ControlProfile {
@@ -440,9 +502,44 @@ model ControlProfile {
   frameworkControl     FrameworkControl     @relation(fields: [frameworkControlId], references: [id], onDelete: Cascade)
   owner                User?                @relation("ControlOwner", fields: [ownerId], references: [id])
   evidence             Evidence[]
+  tests                ControlTest[]
 
   @@unique([tenantId, frameworkControlId])
   @@index([tenantId, ownerId, effectiveness])
+}
+
+model ControlTest {
+  id               String            @id @default(cuid())
+  tenantId         String
+  controlProfileId String
+  testDate         DateTime
+  result           ControlTestResult
+  testerId         String
+  notes            String?
+  evidenceId       String?
+  createdAt        DateTime          @default(now())
+  tenant           Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  controlProfile   ControlProfile    @relation(fields: [controlProfileId], references: [id], onDelete: Cascade)
+  tester           User              @relation("ControlTester", fields: [testerId], references: [id])
+  evidence         Evidence?         @relation("ControlTestEvidence", fields: [evidenceId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, controlProfileId, testDate])
+}
+
+model ScoringPolicy {
+  id          String   @id @default(cuid())
+  tenantId    String
+  version     Int
+  effectiveAt DateTime
+  bandsJson   String
+  active      Boolean  @default(true)
+  createdById String
+  createdAt   DateTime @default(now())
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdBy   User     @relation("ScoringPolicyCreator", fields: [createdById], references: [id])
+
+  @@unique([tenantId, version])
+  @@index([tenantId, active, effectiveAt])
 }
 
 model Evidence {
@@ -462,6 +559,9 @@ model Evidence {
   treatmentPlanId   String?
   treatmentActionId String?
   controlProfileId  String?
+  riskId            String?
+  accessLevel       String           @default("WORKSPACE")
+  retentionUntil    DateTime?
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
   tenant            Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
@@ -469,6 +569,8 @@ model Evidence {
   treatmentPlan     TreatmentPlan?   @relation(fields: [treatmentPlanId], references: [id], onDelete: SetNull)
   treatmentAction   TreatmentAction? @relation(fields: [treatmentActionId], references: [id], onDelete: SetNull)
   controlProfile    ControlProfile?  @relation(fields: [controlProfileId], references: [id], onDelete: SetNull)
+  risk              Risk?            @relation(fields: [riskId], references: [id], onDelete: SetNull)
+  controlTests      ControlTest[]    @relation("ControlTestEvidence")
 
   @@index([tenantId, status, expiresAt])
 }
