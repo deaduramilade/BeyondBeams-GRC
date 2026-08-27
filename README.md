@@ -33,11 +33,14 @@ Framework mapping is available at `/app/frameworks`. Owners and Risk Managers ca
 - `npm run setup`: generate Prisma Client, create the SQLite database, and seed demo data.
 - `npm run db:seed`: reset the demo tenant's sample risks.
 - `npm run db:migrate:rehearse`: apply and inspect PostgreSQL migrations against a disposable target after setting `MIGRATION_REHEARSAL=true`.
+- `npm run db:postgres:fresh`: create a disposable PostgreSQL 16 Docker container, migrate, seed, verify tenant data and runtime audit privileges, then remove it.
+- `npm run db:postgres:upgrade`: repeat the disposable rehearsal and verify a second deploy does not alter seeded tenant data.
+- `npm run test:tenant-isolation`: run the dedicated tenant-boundary contract suite.
 - `npm run security:scan`: scan tracked source and documentation files for common credential patterns.
 
 Deployment probes are available at `/api/health` (liveness) and `/api/ready` (database readiness). The readiness endpoint returns `503` when the database cannot be reached.
 
-The CI workflow runs the secret-pattern scan. PostgreSQL runtime/migration role policy is documented in `prisma/production-roles.sql`; passwords and provider settings must be supplied through the deployment secret manager.
+The CI workflow runs typecheck, lint, tests, secret scanning, both Prisma validations, the production build, and whitespace validation with normal failure propagation. PostgreSQL runtime/migration role policy is documented in `prisma/production-roles.sql`; passwords and provider settings must be supplied through the deployment secret manager.
 
 ## Data and authentication
 
