@@ -14,7 +14,7 @@ const magicSchema = z.object({ email: z.string().email(), token: z.string().min(
 async function authUser(email: string, mfaCode?: string) {
   const user = await db.user.findUnique({ where: { email: email.toLowerCase() }, include: { tenant: true, memberships: true } });
   if (!user) return null;
-  const membership = user.memberships.find((item) => item.tenantId === user.tenantId && (item.acceptedAt || item.userId && !item.inviteToken));
+  const membership = user.memberships.find((item) => item.tenantId === user.tenantId && item.acceptedAt !== null && item.inviteToken === null);
   if (!membership) return null;
   if (user.mfaEnabled) {
     const { decryptSecret, verifyTotpCode } = await import("@/lib/security");
