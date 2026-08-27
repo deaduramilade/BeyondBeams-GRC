@@ -32,8 +32,12 @@ Framework mapping is available at `/app/frameworks`. Owners and Risk Managers ca
 - `npm run typecheck`: run strict TypeScript checking.
 - `npm run setup`: generate Prisma Client, create the SQLite database, and seed demo data.
 - `npm run db:seed`: reset the demo tenant's sample risks.
+- `npm run db:migrate:rehearse`: apply and inspect PostgreSQL migrations against a disposable target after setting `MIGRATION_REHEARSAL=true`.
+- `npm run security:scan`: scan tracked source and documentation files for common credential patterns.
 
 Deployment probes are available at `/api/health` (liveness) and `/api/ready` (database readiness). The readiness endpoint returns `503` when the database cannot be reached.
+
+The CI workflow runs the secret-pattern scan. PostgreSQL runtime/migration role policy is documented in `prisma/production-roles.sql`; passwords and provider settings must be supplied through the deployment secret manager.
 
 ## Data and authentication
 
