@@ -1,5 +1,18 @@
-import { redirect } from "next/navigation";
+import { PageHeader } from "@/components/page-header";
+import { TreatmentActionForm, TreatmentActionUpdate, TreatmentDecision, TreatmentPlanForm, OverdueEscalationButton } from "@/components/lifecycle-forms";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { requireSession } from "@/lib/authz";
+import { db } from "@/lib/db";
+import { formatDate, formatEnum } from "@/lib/utils";
 
-export default function TreatmentsPage() {
-  redirect("/app/governance");
+export default async function TreatmentsPage() {
+  const session = await requireSession(); const tenantId = session.user.tenantId;
+  const [risks, users, plans] = await Promise.all([
+    db.risk.findMany({ where: { tenantId, deletedAt: null }, select: { id: true, reference: true, title: true } }),
+    db.user.findMany({ where: { tenantId }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
+    db.treatmentPlan.findMany({ where: { tenantId }, include: { risk: { select: { reference: true, title: true } }, actions: { include: { owner: { select: { name: true } }, evidence: { select: { id: true } } }, orderBy: { dueDate: "asc" } } }, orderBy: { createdAt: "desc" }, take: 100 }),
+  ]);
+  const riskOptions = risks.map((risk) => ({ value: risk.id, label: `${risk.reference} · ${risk.title}` })); const userOptions = users.map((user) => ({ value: user.id, label: user.name }));
+  return <><PageHeader eyebrow="Treatment governance" title="Treatment plans and actions" description="Track multiple accountable actions per risk, completion evidence, due dates, approvals, and overdue escalation." action={<OverdueEscalationButton/>}/><div className="grid gap-5 xl:grid-cols-2"><Card><CardHeader><h2 className="text-sm font-bold">New treatment plan</h2></CardHeader><CardContent><TreatmentPlanForm risks={riskOptions}/></CardContent></Card><Card><CardHeader><h2 className="text-sm font-bold">Add action</h2></CardHeader><CardContent><TreatmentActionForm plans={plans.map((plan) => ({ value: plan.id, label: `${plan.risk.reference} · ${plan.summary}` }))} users={userOptions}/></CardContent></Card></div><div className="mt-5 grid gap-4">{plans.map((plan) => <Card key={plan.id}><CardHeader><div className="flex flex-wrap justify-between gap-3"><div><p className="text-[10px] font-bold uppercase text-primary">{plan.risk.reference} · {formatEnum(plan.strategy)}</p><h2 className="mt-1 text-sm font-bold">{plan.summary}</h2><p className="mt-1 text-xs text-muted-foreground">Target {formatDate(plan.targetDate)}</p></div><Badge>{formatEnum(plan.status)}</Badge></div>{plan.status === "PENDING" && <div className="mt-4"><TreatmentDecision planId={plan.id}/></div>}</CardHeader><CardContent><div className="divide-y rounded-md border">{plan.actions.map((action) => <div key={action.id} className="grid gap-3 p-4 md:grid-cols-[1fr_180px_220px]"><div><p className="text-sm font-semibold">{action.title}</p><p className="mt-1 text-xs text-muted-foreground">{action.description}</p></div><div className="text-xs"><p>Owner: {action.owner.name}</p><p className={action.dueDate < new Date() && action.status !== "COMPLETED" ? "mt-1 font-semibold text-destructive" : "mt-1 text-muted-foreground"}>Due {formatDate(action.dueDate)}</p></div><div><Badge>{formatEnum(action.status)}</Badge><TreatmentActionUpdate actionId={action.id} currentStatus={action.status}/></div></div>)}{!plan.actions.length && <p className="p-5 text-xs text-muted-foreground">No actions yet. Add at least one accountable action after approval.</p>}</div></CardContent></Card>)}</div></>;
 }
