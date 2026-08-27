@@ -687,17 +687,25 @@ model AuditEvent {
   tenantId   String
   riskId     String?
   actorId    String
+  requestId  String?
+  source     String?
+  ipAddress  String?
+  userAgent  String?
   action     AuditAction
   entityType String      @default("Risk")
   entityId   String
   summary    String
   changes    String?
+  beforeJson String?
+  afterJson  String?
+  reason     String?
   createdAt  DateTime    @default(now())
   tenant     Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   risk       Risk?       @relation(fields: [riskId], references: [id], onDelete: SetNull)
   actor      User        @relation("AuditActor", fields: [actorId], references: [id])
 
   @@index([tenantId])
+  @@index([tenantId, requestId])
   @@index([tenantId, entityId])
   @@index([riskId])
   @@index([actorId])
