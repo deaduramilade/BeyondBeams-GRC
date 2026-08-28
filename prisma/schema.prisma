@@ -152,6 +152,27 @@ enum TaxonomyType {
   TAG
 }
 
+enum JobStatus {
+  QUEUED
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum JobType {
+  REPORT_EXPORT
+  NOTIFICATION_DELIVERY
+  REVIEW_REMINDER
+}
+
+enum ReassessmentStatus {
+  OPEN
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
 model Tenant {
   id                     String                   @id @default(cuid())
   name                   String
@@ -185,6 +206,9 @@ model Tenant {
   treatmentActionHistory TreatmentActionHistory[]
   controlTests           ControlTest[]
   scoringPolicies        ScoringPolicy[]
+  jobs                   Job[]
+  reviewSchedules        ReviewSchedule[]
+  reassessmentRequests   ReassessmentRequest[]
 }
 
 model RateLimitBucket {
@@ -250,6 +274,10 @@ model User {
   treatmentActionHistory        TreatmentActionHistory[] @relation("TreatmentActionHistoryActor")
   controlTests                  ControlTest[]            @relation("ControlTester")
   scoringPolicies               ScoringPolicy[]          @relation("ScoringPolicyCreator")
+  createdReviewSchedules        ReviewSchedule[]         @relation("ReviewScheduleCreator")
+  requestedReassessments        ReassessmentRequest[]    @relation("ReassessmentRequester")
+  assignedReassessments         ReassessmentRequest[]    @relation("ReassessmentAssignee")
+  decidedReassessments          ReassessmentRequest[]    @relation("ReassessmentDecider")
 
   @@index([tenantId])
   @@index([tenantId, email])
@@ -354,6 +382,8 @@ model Risk {
   appetiteBreaches   AppetiteBreach[]
   reviews            RiskReview[]
   evidence           Evidence[]
+  reviewSchedules    ReviewSchedule[]
+  reassessmentRequests ReassessmentRequest[]
 
   @@unique([tenantId, reference])
   @@index([tenantId])
@@ -361,6 +391,70 @@ model Risk {
   @@index([tenantId, status])
   @@index([tenantId, residualScore])
   @@index([ownerId])
+}
+
+model ReviewSchedule {
+  id            String    @id @default(cuid())
+  tenantId      String
+  riskId        String    @unique
+  cadenceMonths Int       @default(3)
+  nextDueAt     DateTime
+  active        Boolean   @default(true)
+  createdById   String
+  lastRunAt     DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  tenant        Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  risk          Risk      @relation(fields: [riskId], references: [id], onDelete: Cascade)
+  createdBy     User      @relation("ReviewScheduleCreator", fields: [createdById], references: [id])
+
+  @@index([tenantId, active, nextDueAt])
+}
+
+model ReassessmentRequest {
+  id            String             @id @default(cuid())
+  tenantId      String
+  riskId        String
+  requestedById String
+  reason        String
+  status        ReassessmentStatus @default(OPEN)
+  assignedToId  String?
+  notes         String?
+  decidedById   String?
+  decidedAt     DateTime?
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+  tenant        Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  risk          Risk               @relation(fields: [riskId], references: [id], onDelete: Cascade)
+  requestedBy   User               @relation("ReassessmentRequester", fields: [requestedById], references: [id])
+  assignedTo    User?              @relation("ReassessmentAssignee", fields: [assignedToId], references: [id])
+  decidedBy     User?              @relation("ReassessmentDecider", fields: [decidedById], references: [id])
+
+  @@index([tenantId, status, createdAt])
+  @@index([tenantId, riskId])
+}
+
+model Job {
+  id          String    @id @default(cuid())
+  tenantId    String
+  type        JobType
+  status      JobStatus @default(QUEUED)
+  payloadJson String
+  resultJson  String?
+  error       String?
+  attempts    Int       @default(0)
+  maxAttempts Int       @default(5)
+  runAfter    DateTime  @default(now())
+  lockedAt    DateTime?
+  lockedBy    String?
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, status, runAfter])
+  @@index([status, runAfter])
 }
 
 model Assessment {
