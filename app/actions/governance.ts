@@ -9,6 +9,7 @@ import { db } from "@/lib/db";
 import { sendNotificationEmail } from "@/lib/email";
 import { isAppetiteResolution, isValidControlEffectiveness, isValidControlImplementation, requiresApprovedInherentAssessment } from "@/lib/phase2-policy";
 import { canTransition, transitionRequirements } from "@/lib/risk-lifecycle";
+import { canTransitionReassessment, nextReviewDateFrom, scheduleFromOutcome, shouldRequestReassessment } from "@/lib/review-workflow";
 
 const id = z.string().cuid();
 const text = z.string().trim().min(3).max(5000);
@@ -247,9 +248,71 @@ export async function recordRiskReview(input: unknown) {
   await db.$transaction(async (tx: Prisma.TransactionClient) => {
     const review = await tx.riskReview.create({ data: { tenantId, riskId: risk.id, reviewerId: session.user.id, scheduledFor: parsed.data.scheduledFor, completedAt: new Date(), outcome: parsed.data.outcome, notes: parsed.data.notes, reassessmentRequested: parsed.data.outcome === "REASSESS" } });
     await tx.risk.update({ where: { id: risk.id }, data: { nextReviewDate: parsed.data.nextReviewDate, status: parsed.data.outcome === "CLOSE" ? "CLOSED" : parsed.data.outcome === "ESCALATE" || parsed.data.outcome === "REASSESS" ? "IN_REVIEW" : risk.status, version: { increment: 1 } } });
+    if (shouldRequestReassessment(parsed.data.outcome)) {
+      const openRequest = await tx.reassessmentRequest.findFirst({ where: { tenantId, riskId: risk.id, status: "OPEN" } });
+      if (!openRequest) await tx.reassessmentRequest.create({ data: { tenantId, riskId: risk.id, requestedById: session.user.id, reason: parsed.data.notes, status: "OPEN" } });
+    }
+    const schedule = await tx.reviewSchedule.findUnique({ where: { riskId: risk.id } });
+    const nextState = scheduleFromOutcome(schedule, parsed.data.outcome, parsed.data.nextReviewDate);
+    await tx.reviewSchedule.upsert({
+      where: { riskId: risk.id },
+      create: { tenantId, riskId: risk.id, cadenceMonths: 3, nextDueAt: nextState.nextDueAt, active: nextState.active, createdById: session.user.id, lastRunAt: nextState.lastRunAt },
+      update: { nextDueAt: nextState.nextDueAt, active: nextState.active, lastRunAt: nextState.lastRunAt, ...("cadenceMonths" in nextState ? { cadenceMonths: nextState.cadenceMonths } : {}) },
+    });
     await appendAuditEvent(tx, { tenantId, actorId: session.user.id, action: "CREATE", riskId: risk.id, entityType: "RiskReview", entityId: review.id, summary: `Recorded ${parsed.data.outcome.toLowerCase()} review outcome for ${risk.reference}`, afterJson: JSON.stringify({ outcome: review.outcome, nextReviewDate: parsed.data.nextReviewDate, reassessmentRequested: review.reassessmentRequested }), reason: parsed.data.notes });
   });
   refresh(risk.id);
+  return { success: true };
+}
+
+export async function upsertReviewSchedule(input: unknown) {
+  const session = await requirePermission("risk:update");
+  const parsed = z.object({ riskId: id, cadenceMonths: z.coerce.number().int().min(1).max(24) }).safeParse(input);
+  if (!parsed.success) return { error: "A review cadence between 1 and 24 months is required." };
+  const tenantId = session.user.tenantId;
+  const risk = await db.risk.findFirst({ where: { id: parsed.data.riskId, tenantId, deletedAt: null } });
+  if (!risk) return { error: "Risk not found." };
+  const now = new Date();
+  const schedule = await db.$transaction(async (tx: Prisma.TransactionClient) => {
+    const created = await tx.reviewSchedule.upsert({
+      where: { riskId: risk.id },
+      create: { tenantId, riskId: risk.id, cadenceMonths: parsed.data.cadenceMonths, nextDueAt: nextReviewDateFrom(now, parsed.data.cadenceMonths), createdById: session.user.id },
+      update: { cadenceMonths: parsed.data.cadenceMonths, nextDueAt: nextReviewDateFrom(now, parsed.data.cadenceMonths), active: true },
+    });
+    await appendAuditEvent(tx, { tenantId, actorId: session.user.id, action: "UPDATE", riskId: risk.id, entityType: "ReviewSchedule", entityId: created.id, summary: `Scheduled ${risk.reference} for ${created.cadenceMonths}-monthly review`, afterJson: JSON.stringify({ cadenceMonths: created.cadenceMonths, nextDueAt: created.nextDueAt }) });
+    return created;
+  });
+  refresh(risk.id);
+  return { success: true, id: schedule.id };
+}
+
+export async function updateReassessmentRequest(input: unknown) {
+  const session = await requirePermission("risk:update");
+  const parsed = z.object({ requestId: id, status: z.enum(["IN_PROGRESS", "COMPLETED", "CANCELLED"]), assignedToId: id.optional(), notes: optionalText }).safeParse(input);
+  if (!parsed.success) return { error: "Invalid reassessment update." };
+  const tenantId = session.user.tenantId;
+  const current = await db.reassessmentRequest.findFirst({ where: { id: parsed.data.requestId, tenantId } });
+  if (!current) return { error: "Reassessment request not found." };
+  if (!canTransitionReassessment(current.status, parsed.data.status)) return { error: `A ${current.status.toLowerCase()} request cannot move to ${parsed.data.status.toLowerCase()}.` };
+  if (parsed.data.assignedToId) {
+    const assignee = await db.user.findFirst({ where: { id: parsed.data.assignedToId, tenantId } });
+    if (!assignee) return { error: "The assignee must belong to this workspace." };
+  }
+  const request = await db.$transaction(async (tx: Prisma.TransactionClient) => {
+    const updated = await tx.reassessmentRequest.update({
+      where: { id: current.id },
+      data: {
+        status: parsed.data.status,
+        assignedToId: parsed.data.assignedToId ?? (parsed.data.status === "CANCELLED" || parsed.data.status === "COMPLETED" ? current.assignedToId : current.assignedToId),
+        notes: parsed.data.notes ?? current.notes,
+        decidedById: parsed.data.status === "COMPLETED" ? session.user.id : current.decidedById,
+        decidedAt: parsed.data.status === "COMPLETED" ? new Date() : current.decidedAt,
+      },
+    });
+    await appendAuditEvent(tx, { tenantId, actorId: session.user.id, action: "UPDATE", riskId: current.riskId, entityType: "ReassessmentRequest", entityId: current.id, summary: `Marked reassessment request ${parsed.data.status.toLowerCase()}`, beforeJson: JSON.stringify({ status: current.status }), afterJson: JSON.stringify({ status: parsed.data.status, assignedToId: updated.assignedToId }), reason: parsed.data.notes });
+    return updated;
+  });
+  refresh(current.riskId);
   return { success: true };
 }
 
