@@ -16,7 +16,10 @@ const password = randomBytes(24).toString("base64url");
 const database = "grc_backup_rehearsal";
 const user = "grc_backup_admin";
 const port = process.env.PG_BACKUP_REHEARSAL_PORT ?? "55433";
-const databaseUrl = `postgresql://${user}:${password}@localhost:${port}/${database}`;
+const databaseUrlValue = new URL(`postgresql://localhost:${port}/${database}`);
+databaseUrlValue.username = user;
+databaseUrlValue.password = password;
+const databaseUrl = databaseUrlValue.toString();
 const env = { ...process.env, DATABASE_URL: databaseUrl, NODE_ENV: "test", SEED_DEMO_PASSWORD: "BackupRehearsal123!" };
 
 const run = (file, args, options = {}) => execFileSync(file, args, { stdio: "inherit", env, ...options });
