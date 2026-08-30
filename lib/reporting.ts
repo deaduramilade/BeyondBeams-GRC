@@ -95,13 +95,253 @@ export async function boardPdf(tenantId: string) {
 }
 
 export async function gapAnalysisPdf(tenantId: string) {
-  const [tenant, selections] = await Promise.all([
+  const [tenant, selections, unmappedRisks, highUncoveredRisks] = await Promise.all([
     db.tenant.findUniqueOrThrow({ where: { id: tenantId }, select: { name: true } }),
-    db.tenantFramework.findMany({ where: { tenantId, enabled: true }, include: { framework: { include: { controls: { include: { mappings: { where: { risk: { tenantId, deletedAt: null } } } } } } } }, orderBy: { framework: { name: "asc" } } }),
+    db.tenantFramework.findMany({
+      where: { tenantId, enabled: true },
+      include: {
+        framework: {
+          include: {
+            controls: {
+              include: {
+                mappings: {
+                  where: { risk: { tenantId, deletedAt: null } },
+                  include: { risk: { select: { id: true, reference: true, title: true } } },
+                },
+              },
+            },
+          },
+        },
+      },
+      orderBy: { framework: { name: "asc" } },
+    }),
+    db.risk.findMany({
+      where: { tenantId, deletedAt: null, frameworkMappings: { none: {} } },
+      select: { reference: true, title: true, residualScore: true, inherentScore: true, category: true },
+      orderBy: { residualScore: "desc" },
+    }),
+    db.risk.findMany({
+      where: {
+        tenantId,
+        deletedAt: null,
+        residualScore: { gte: 15 },
+        frameworkMappings: { none: {} },
+      },
+      select: { reference: true, title: true, residualScore: true, treatment: true },
+      orderBy: { residualScore: "desc" },
+    }),
   ]);
-  const doc = new PDFDocument({ size: "A4", margin: 48 }); const chunks: Buffer[] = []; const stream = doc as PDFKit.PDFDocument & { on: (event: string, callback: (chunk: Buffer) => void) => void }; stream.on("data", (chunk) => chunks.push(chunk));
-  doc.fillColor("#0A2540").rect(0, 0, 595, 120).fill(); doc.fillColor("#FFFFFF").fontSize(11).text("BEYONDBEAMS GRC", 48, 38); doc.fontSize(27).text("Framework gap analysis", 48, 60); doc.fontSize(10).fillColor("#A9EDE5").text(`${tenant.name}  |  ${new Date().toLocaleDateString("en-US", { dateStyle: "long" })}`, 48, 94); doc.fillColor("#6B7280").fontSize(8).text("Governance aid only — not certification, legal advice, or an authoritative conformance opinion.", 48, 112);
-  let y = 150; for (const selection of selections) { const controls = selection.framework.controls; const mapped = controls.filter((control) => control.mappings.length > 0).length; if (y > 690) { doc.addPage(); y = 52; } doc.fillColor("#0A2540").fontSize(17).text(selection.framework.name, 48, y); doc.fillColor("#00A896").fontSize(10).text(`${mapped}/${controls.length} controls mapped`, 48, y + 24); y += 54; for (const control of controls.filter((item) => item.mappings.length === 0)) { if (y > 740) { doc.addPage(); y = 52; } doc.fillColor("#0A2540").fontSize(9).text(`${control.controlId}  ${control.title}`, 58, y, { width: 470 }); y += 20; } y += 18; }
-  if (!selections.length) doc.fillColor("#374151").fontSize(12).text("No frameworks are enabled for this workspace.", 48, 160);
-  doc.end(); await new Promise<void>((resolve) => doc.on("end", resolve)); return Buffer.concat(chunks);
+
+  const doc = new PDFDocument({ size: "A4", margin: 48 });
+  const chunks: Buffer[] = [];
+  const stream = doc as PDFKit.PDFDocument & { on: (event: string, callback: (chunk: Buffer) => void) => void };
+  stream.on("data", (chunk) => chunks.push(chunk));
+
+  doc.fillColor("#0A2540").rect(0, 0, 595, 120).fill();
+  doc.fillColor("#FFFFFF").fontSize(11).text("BEYONDBEAMS GRC", 48, 38);
+  doc.fontSize(27).text("Framework gap analysis", 48, 60);
+  doc.fontSize(10).fillColor("#A9EDE5").text(`${tenant.name}  |  ${new Date().toLocaleDateString("en-US", { dateStyle: "long" })}`, 48, 94);
+  doc.fillColor("#6B7280").fontSize(8).text("Governance aid only — not certification, legal advice, or an authoritative conformance opinion.", 48, 112);
+
+  let y = 145;
+  if (!selections.length) {
+    doc.fillColor("#374151").fontSize(12).text("No frameworks are enabled for this workspace.", 48, 160);
+  } else {
+    for (const selection of selections) {
+      const controls = selection.framework.controls;
+      const mapped = controls.filter((c) => c.mappings.length > 0);
+      const unmapped = controls.filter((c) => c.mappings.length === 0);
+
+      if (y > 680) { doc.addPage(); y = 52; }
+      doc.fillColor("#0A2540").fontSize(15).text(selection.framework.name, 48, y);
+      doc.fillColor("#00A896").fontSize(10).text(`${mapped.length}/${controls.length} controls mapped (${Math.round((mapped.length / (controls.length || 1)) * 100)}% coverage)`, 48, y + 20);
+      y += 44;
+
+      if (unmapped.length > 0) {
+        doc.fillColor("#B91C1C").fontSize(9).text(`Unmapped controls (${unmapped.length})`, 48, y);
+        y += 16;
+        for (const control of unmapped) {
+          if (y > 740) { doc.addPage(); y = 52; }
+          doc.fillColor("#0A2540").fontSize(8).text(`${control.controlId}  ${control.title}`, 56, y, { width: 480 });
+          y += 16;
+        }
+        y += 10;
+      }
+    }
+
+    if (highUncoveredRisks.length > 0) {
+      if (y > 660) { doc.addPage(); y = 52; }
+      doc.fillColor("#B91C1C").fontSize(13).text("High exposure risks without control coverage", 48, y);
+      y += 24;
+      for (const r of highUncoveredRisks) {
+        if (y > 740) { doc.addPage(); y = 52; }
+        doc.fillColor("#0A2540").fontSize(8).text(`${r.reference} - ${r.title} (Score: ${r.residualScore}, Treatment: ${formatEnum(r.treatment)})`, 56, y, { width: 480 });
+        y += 16;
+      }
+      y += 10;
+    }
+
+    if (unmappedRisks.length > 0) {
+      if (y > 660) { doc.addPage(); y = 52; }
+      doc.fillColor("#0A2540").fontSize(13).text(`Risks awaiting framework mapping (${unmappedRisks.length})`, 48, y);
+      y += 24;
+      for (const r of unmappedRisks.slice(0, 15)) {
+        if (y > 740) { doc.addPage(); y = 52; }
+        doc.fillColor("#374151").fontSize(8).text(`${r.reference} - ${r.title} [${formatEnum(r.category)}]`, 56, y, { width: 480 });
+        y += 16;
+      }
+    }
+  }
+
+  doc.end();
+  await new Promise<void>((resolve) => doc.on("end", resolve));
+  return Buffer.concat(chunks);
+}
+
+export async function gapAnalysisWorkbook(tenantId: string) {
+  const [tenant, selections, unmappedRisks, highUncoveredRisks, allMappings] = await Promise.all([
+    db.tenant.findUniqueOrThrow({ where: { id: tenantId }, select: { name: true } }),
+    db.tenantFramework.findMany({
+      where: { tenantId, enabled: true },
+      include: {
+        framework: {
+          include: {
+            controls: {
+              include: {
+                mappings: {
+                  where: { risk: { tenantId, deletedAt: null } },
+                  include: {
+                    risk: { select: { id: true, reference: true, title: true, category: true, residualScore: true } },
+                    reviewedBy: { select: { name: true } },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      orderBy: { framework: { name: "asc" } },
+    }),
+    db.risk.findMany({
+      where: { tenantId, deletedAt: null, frameworkMappings: { none: {} } },
+      include: { owner: { select: { name: true } }, businessUnit: { select: { name: true } } },
+      orderBy: { residualScore: "desc" },
+    }),
+    db.risk.findMany({
+      where: { tenantId, deletedAt: null, residualScore: { gte: 15 }, frameworkMappings: { none: {} } },
+      include: { owner: { select: { name: true } } },
+      orderBy: { residualScore: "desc" },
+    }),
+    db.riskFrameworkMapping.findMany({
+      where: { risk: { tenantId, deletedAt: null } },
+      include: {
+        frameworkControl: { include: { framework: { select: { name: true } } } },
+        risk: { select: { reference: true, title: true, category: true, residualScore: true } },
+        reviewedBy: { select: { name: true } },
+      },
+      orderBy: { mappedAt: "desc" },
+    }),
+  ]);
+
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = "BeyondBeams GRC";
+  workbook.created = new Date();
+
+  // 1. Summary Sheet
+  const summarySheet = workbook.addWorksheet("Gap Summary");
+  summarySheet.addRow(["BeyondBeams GRC - Compliance Gap Analysis"]);
+  summarySheet.addRow(["Workspace", tenant.name]);
+  summarySheet.addRow(["Generated At", new Date().toISOString()]);
+  summarySheet.addRow(["Disclaimer", "Reference governance aid only; not certification or legal advice."]);
+  summarySheet.addRow([]);
+  summarySheet.addRow(["Framework", "Version", "Total Controls", "Mapped Controls", "Unmapped Controls", "Coverage %"]);
+
+  let totalFrameworkControls = 0;
+  let totalMappedControls = 0;
+
+  for (const s of selections) {
+    const total = s.framework.controls.length;
+    const mapped = s.framework.controls.filter((c) => c.mappings.length > 0).length;
+    const unmapped = total - mapped;
+    totalFrameworkControls += total;
+    totalMappedControls += mapped;
+    summarySheet.addRow([
+      s.framework.name,
+      s.framework.version,
+      total,
+      mapped,
+      unmapped,
+      total > 0 ? `${Math.round((mapped / total) * 100)}%` : "0%",
+    ]);
+  }
+
+  summarySheet.addRow([]);
+  summarySheet.addRow(["Total Enabled Controls", totalFrameworkControls]);
+  summarySheet.addRow(["Total Mapped Controls", totalMappedControls]);
+  summarySheet.addRow(["Unmapped Risks Count", unmappedRisks.length]);
+  summarySheet.addRow(["High Exposure Uncovered Risks", highUncoveredRisks.length]);
+  summarySheet.getRow(6).font = { bold: true };
+
+  // 2. Unmapped Controls Sheet
+  const unmappedSheet = workbook.addWorksheet("Unmapped Controls");
+  const unmappedHeaders = ["Framework", "Control ID", "Category", "Title", "Description"];
+  unmappedSheet.addRow(unmappedHeaders);
+  unmappedSheet.getRow(1).font = { bold: true, color: { argb: "FFFFFFFF" } };
+  unmappedSheet.getRow(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0A2540" } };
+
+  for (const s of selections) {
+    for (const c of s.framework.controls.filter((c) => c.mappings.length === 0)) {
+      unmappedSheet.addRow([s.framework.name, c.controlId, c.category, c.title, c.description]);
+    }
+  }
+
+  // 3. Mapped Controls & Applicability Reviews Sheet
+  const mappedSheet = workbook.addWorksheet("Mappings & Applicability");
+  const mappedHeaders = ["Framework", "Control ID", "Control Title", "Risk Reference", "Risk Title", "Applicability Decision", "Decision Rationale", "Reviewed By", "Reviewed At"];
+  mappedSheet.addRow(mappedHeaders);
+  mappedSheet.getRow(1).font = { bold: true, color: { argb: "FFFFFFFF" } };
+  mappedSheet.getRow(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0A2540" } };
+
+  for (const m of allMappings) {
+    mappedSheet.addRow([
+      m.frameworkControl.framework.name,
+      m.frameworkControl.controlId,
+      m.frameworkControl.title,
+      m.risk.reference,
+      m.risk.title,
+      m.applicability ? formatEnum(m.applicability) : "Pending Review",
+      m.notes ?? "",
+      m.reviewedBy?.name ?? "",
+      m.reviewedAt ? m.reviewedAt.toISOString().slice(0, 10) : "",
+    ]);
+  }
+
+  // 4. Unmapped Risks Sheet
+  const risksSheet = workbook.addWorksheet("Unmapped Risks");
+  const risksHeaders = ["Reference", "Title", "Category", "Owner", "Business Unit", "Residual Score", "Treatment", "Next Review"];
+  risksSheet.addRow(risksHeaders);
+  risksSheet.getRow(1).font = { bold: true, color: { argb: "FFFFFFFF" } };
+  risksSheet.getRow(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0A2540" } };
+
+  for (const r of unmappedRisks) {
+    risksSheet.addRow([
+      r.reference,
+      r.title,
+      formatEnum(r.category),
+      r.owner.name,
+      r.businessUnit?.name ?? "",
+      r.residualScore ?? r.inherentScore,
+      formatEnum(r.treatment),
+      r.nextReviewDate.toISOString().slice(0, 10),
+    ]);
+  }
+
+  // Auto-fit column widths across sheets
+  [summarySheet, unmappedSheet, mappedSheet, risksSheet].forEach((sheet) => {
+    sheet.columns.forEach((column) => {
+      column.width = Math.min(Math.max((column.header?.toString().length ?? 10) + 4, 14), 36);
+    });
+  });
+
+  return Buffer.from(await workbook.xlsx.writeBuffer());
 }

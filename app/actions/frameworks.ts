@@ -89,15 +89,53 @@ export async function syncRiskControlMappings(riskId: string, requestedControlId
 
 export async function frameworkPermission() { const session = await requireRole(Object.values(Role)); return canManageFramework(session.user.role); }
 
-export async function reviewRiskControlMapping(mappingId: string, applicability: string) {
+export async function reviewRiskControlMapping(mappingId: string, applicability: string, rationale?: string) {
   const session = await requireRole([Role.OWNER, Role.RISK_MANAGER, Role.ASSESSOR]);
-  const parsed = z.object({ mappingId: id, applicability: z.string().trim().min(10).max(1000) }).safeParse({ mappingId, applicability });
-  if (!parsed.success) return { error: "Record an applicability decision of at least 10 characters." };
-  const mapping = await db.riskFrameworkMapping.findFirst({ where: { id: parsed.data.mappingId, risk: { tenantId: session.user.tenantId, deletedAt: null } }, include: { risk: { select: { id: true, reference: true } }, frameworkControl: { include: { framework: { select: { name: true, version: true } } } } } });
+  const parsed = z.object({
+    mappingId: id,
+    applicability: z.enum(["APPLICABLE", "PARTIALLY_APPLICABLE", "NOT_APPLICABLE", "Applicable", "Partially applicable", "Not applicable"]),
+    rationale: z.string().trim().max(1000).optional(),
+  }).safeParse({ mappingId, applicability, rationale });
+
+  if (!parsed.success) return { error: "Please select a valid applicability decision (Applicable, Partially applicable, or Not applicable)." };
+
+  const mapping = await db.riskFrameworkMapping.findFirst({
+    where: { id: parsed.data.mappingId, risk: { tenantId: session.user.tenantId, deletedAt: null } },
+    include: {
+      risk: { select: { id: true, reference: true } },
+      frameworkControl: { include: { framework: { select: { name: true, version: true } } } },
+    },
+  });
   if (!mapping) return { error: "Framework mapping not found." };
+
+  const normalizedApplicability = parsed.data.applicability.toUpperCase().replace(/\s+/g, "_");
+  const notes = parsed.data.rationale?.trim() || mapping.notes;
+
   await db.$transaction([
-    db.riskFrameworkMapping.update({ where: { id: mapping.id }, data: { applicability: parsed.data.applicability, reviewedAt: new Date(), reviewedById: session.user.id } }),
-    db.auditEvent.create({ data: { tenantId: session.user.tenantId, riskId: mapping.risk.id, actorId: session.user.id, action: "UPDATE", entityType: "RiskFrameworkMapping", entityId: mapping.id, summary: `Reviewed applicability for ${mapping.frameworkControl.framework.name} ${mapping.frameworkControl.controlId} on ${mapping.risk.reference}`, changes: JSON.stringify({ applicability: parsed.data.applicability }) } }),
+    db.riskFrameworkMapping.update({
+      where: { id: mapping.id },
+      data: {
+        applicability: normalizedApplicability,
+        notes,
+        reviewedAt: new Date(),
+        reviewedById: session.user.id,
+      },
+    }),
+    db.auditEvent.create({
+      data: {
+        tenantId: session.user.tenantId,
+        riskId: mapping.risk.id,
+        actorId: session.user.id,
+        action: "UPDATE",
+        entityType: "RiskFrameworkMapping",
+        entityId: mapping.id,
+        summary: `Reviewed applicability (${normalizedApplicability}) for ${mapping.frameworkControl.framework.name} ${mapping.frameworkControl.controlId} on ${mapping.risk.reference}`,
+        changes: JSON.stringify({ applicability: normalizedApplicability, rationale: notes }),
+      },
+    }),
   ]);
-  revalidatePath(`/app/risks/${mapping.risk.id}`); revalidatePath("/app/frameworks"); return { success: true };
+
+  revalidatePath(`/app/risks/${mapping.risk.id}`);
+  revalidatePath("/app/frameworks");
+  return { success: true };
 }

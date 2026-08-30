@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowRight, BarChart3, BookOpenCheck, BrainCircuit, Building2, Check, ChevronRight, CircleCheck, FileCheck2, Gauge, Globe2, Menu, Radar, ShieldCheck, Sparkles, Users } from "lucide-react";
 import { Brand } from "@/components/brand";
+import { PricingSection } from "@/components/pricing-section";
 
 const features = [
   { icon: BookOpenCheck, title: "Risk Register", text: "Capture accountable risks, treatments, owners, reviews, and evidence in one living record." },
@@ -9,12 +10,6 @@ const features = [
   { icon: Sparkles, title: "Board-Language Translator", text: "Turn technical findings into clear business exposure, decision context, and management action." },
   { icon: Globe2, title: "Industry Coverage", text: "Start with practical healthcare and fintech libraries plus worldwide compliance references." },
   { icon: Radar, title: "Emerging Risk", text: "Monitor weak signals, define indicators, and promote validated hypotheses into the formal register." },
-];
-const plans = [
-  { name: "Free", price: "$0", note: "For getting risk out of spreadsheets", features: ["1 workspace", "Up to 10 risks", "3 board translations"] },
-  { name: "Growth", price: "$39", note: "For small accountable teams", features: ["Up to 5 members", "Unlimited risks", "Compliance linkage"], popular: true },
-  { name: "Professional", price: "$99", note: "For scaling regulated teams", features: ["Up to 20 members", "Emerging-risk workflow", "Advanced insights"] },
-  { name: "Premium", price: "$249", note: "For complex assurance needs", features: ["Unlimited members", "Priority support", "Custom onboarding"] },
 ];
 const faqs = [
   ["Can I start without a risk specialist?", "Yes. Guided fields, consistent scoring, practical language, and seeded examples help operational owners build a credible register while keeping human accountability clear."],
@@ -38,7 +33,7 @@ export default function LandingPage(){return <main className="overflow-hidden bg
 
   <section id="how" className="border-y border-white/10 bg-[#071c2f]"><div className="landing-section py-20 lg:py-28"><div className="grid gap-10 lg:grid-cols-[.7fr_1.3fr]"><div><p className="text-xs font-bold uppercase text-primary">How it works</p><h2 className="mt-4 font-display text-4xl sm:text-5xl">Clarity in three moves.</h2></div><ol className="grid gap-px bg-white/10 sm:grid-cols-3">{[["01","Capture","Record the uncertain event, accountable owner, and business context."],["02","Assess","Score exposure and connect relevant controls and obligations."],["03","Act","Treat, monitor, evidence, and communicate the decision clearly."]].map(([number,title,text])=><li className="bg-[#071c2f] p-6" key={number}><span className="font-display text-3xl text-primary">{number}</span><h3 className="mt-8 text-sm font-bold">{title}</h3><p className="mt-3 text-sm leading-6 text-slate-400">{text}</p></li>)}</ol></div></div></section>
 
-  <section id="pricing" className="landing-section py-20 lg:py-28"><div className="text-center"><p className="text-xs font-bold uppercase text-primary">Transparent pricing</p><h2 className="mt-4 font-display text-4xl sm:text-5xl">Start lean. Scale when risk demands it.</h2><p className="mx-auto mt-5 max-w-xl text-sm leading-7 text-slate-400">Monthly pricing in USD. No hidden platform fee and no sales call required to begin.</p></div><div className="mt-12 grid gap-4 md:grid-cols-2 xl:grid-cols-4">{plans.map(plan=><article className={`relative border p-6 ${plan.popular?"border-primary bg-primary/[.07] shadow-xl shadow-black/20":"border-white/10 bg-[#071c2f]"}`} key={plan.name}>{plan.popular&&<span className="absolute right-4 top-0 -translate-y-1/2 bg-[#00A896] px-2 py-1 text-[9px] font-extrabold uppercase text-[#052b31]">Most popular</span>}<h3 className="text-sm font-bold">{plan.name}</h3><p className="mt-5"><span className="font-display text-4xl">{plan.price}</span><span className="text-xs text-slate-500"> / month</span></p><p className="mt-3 min-h-10 text-xs leading-5 text-slate-400">{plan.note}</p><ul className="my-6 space-y-3">{plan.features.map(item=><li className="flex gap-2 text-xs text-slate-300" key={item}><Check className="size-3.5 shrink-0 text-primary"/>{item}</li>)}</ul><Link href="/register" className={`landing-button w-full ${plan.popular?"bg-[#00A896] text-[#052b31] hover:bg-teal-300":"border border-white/20 hover:bg-white/[.06]"}`}>Choose {plan.name}</Link></article>)}</div></section>
+  <PricingSection />
 
   <section id="resources" className="border-y border-white/10 bg-[#071c2f]"><div className="landing-section grid gap-12 py-20 lg:grid-cols-[1fr_1.1fr] lg:py-24"><div><p className="text-xs font-bold uppercase text-primary">Trusted operating principles</p><h2 className="mt-4 font-display text-4xl">Built for scrutiny,<br/>not theatre.</h2><p className="mt-5 max-w-lg text-sm leading-7 text-slate-400">Secure tenant boundaries, explicit roles, auditable activity, human-reviewed assistance, and linked source context are part of the workflow.</p></div><div className="grid grid-cols-2 gap-px bg-white/10">{[[Building2,"Tenant isolation"],[Users,"Five clear roles"],[ShieldCheck,"Auditable actions"],[BarChart3,"Consistent scoring"]].map(([Icon,label])=>{const I=Icon as typeof Building2;return <div className="bg-[#071c2f] p-5 sm:p-7" key={String(label)}><I className="size-5 text-primary"/><p className="mt-5 text-xs font-bold">{String(label)}</p></div>})}</div></div></section>
 

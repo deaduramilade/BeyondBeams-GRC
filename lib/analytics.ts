@@ -17,6 +17,8 @@ export type PortfolioAnalytics = {
   controlEffectivenessPercent: number;
   levelDistribution: Record<string, number>;
   categoryDistribution: Record<string, number>;
+  businessUnitDistribution?: Record<string, number>;
+  objectiveDistribution?: Record<string, number>;
   heatMap: HeatMapCell[];
   reconciliation: { registerCount: number; scoredRiskCount: number; unscoredRiskCount: number; residualCount: number; inherentOnlyCount: number };
 };
@@ -43,7 +45,7 @@ export function levelForScore(score: number) {
 }
 
 export function calculatePortfolioAnalytics(input: {
-  risks: Array<{ id: string; category: string; inherentLikelihood: number; inherentImpact: number; inherentScore: number; residualLikelihood: number | null; residualImpact: number | null; residualScore: number | null; nextReviewDate: Date }>;
+  risks: Array<{ id: string; category: string; businessUnit?: { name: string } | null; objective?: { name: string } | null; inherentLikelihood: number; inherentImpact: number; inherentScore: number; residualLikelihood: number | null; residualImpact: number | null; residualScore: number | null; nextReviewDate: Date }>;
   appetiteBreachCount: number;
   openTreatmentCount: number;
   treatmentActionCount: number;
@@ -61,12 +63,21 @@ export function calculatePortfolioAnalytics(input: {
   const controlEffectivenessPercent = input.controlProfileCount === 0 ? 0 : Math.round((input.effectiveControlCount / input.controlProfileCount) * 100);
   const levelDistribution: Record<string, number> = {};
   const categoryDistribution: Record<string, number> = {};
+  const businessUnitDistribution: Record<string, number> = {};
+  const objectiveDistribution: Record<string, number> = {};
+
   for (const risk of input.risks) {
     const score = risk.residualScore ?? risk.inherentScore;
     const level = levelForScore(score);
     levelDistribution[level] = (levelDistribution[level] ?? 0) + 1;
     categoryDistribution[risk.category] = (categoryDistribution[risk.category] ?? 0) + 1;
+    const buName = risk.businessUnit?.name || "Unassigned";
+    businessUnitDistribution[buName] = (businessUnitDistribution[buName] ?? 0) + 1;
+    if (risk.objective?.name) {
+      objectiveDistribution[risk.objective.name] = (objectiveDistribution[risk.objective.name] ?? 0) + 1;
+    }
   }
+
   return {
     generatedAt: asOf.toISOString(),
     activeRiskCount,
@@ -83,6 +94,8 @@ export function calculatePortfolioAnalytics(input: {
     controlEffectivenessPercent,
     levelDistribution,
     categoryDistribution,
+    businessUnitDistribution,
+    objectiveDistribution,
     heatMap: buildHeatMap(input.risks),
     reconciliation: { registerCount: activeRiskCount, scoredRiskCount: scoredRisks.length, unscoredRiskCount: activeRiskCount - scoredRisks.length, residualCount, inherentOnlyCount: activeRiskCount - residualCount },
   };
@@ -90,7 +103,22 @@ export function calculatePortfolioAnalytics(input: {
 
 export async function getPortfolioAnalytics(tenantId: string, asOf = new Date()) {
   const [risks, appetiteBreachCount, openTreatmentCount, treatmentActionCount, overdueActionCount, controlProfileCount, effectiveControlCount] = await Promise.all([
-    db.risk.findMany({ where: { tenantId, deletedAt: null }, select: { id: true, category: true, inherentLikelihood: true, inherentImpact: true, inherentScore: true, residualLikelihood: true, residualImpact: true, residualScore: true, nextReviewDate: true } }),
+    db.risk.findMany({
+      where: { tenantId, deletedAt: null },
+      select: {
+        id: true,
+        category: true,
+        inherentLikelihood: true,
+        inherentImpact: true,
+        inherentScore: true,
+        residualLikelihood: true,
+        residualImpact: true,
+        residualScore: true,
+        nextReviewDate: true,
+        businessUnit: { select: { name: true } },
+        objective: { select: { name: true } },
+      },
+    }),
     db.appetiteBreach.count({ where: { tenantId, status: { in: ["OPEN", "ACKNOWLEDGED", "TREATING"] } } }),
     db.treatmentPlan.count({ where: { tenantId, status: "APPROVED" } }),
     db.treatmentAction.count({ where: { tenantId, status: { not: "COMPLETED" } } }),
