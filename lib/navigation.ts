@@ -27,6 +27,7 @@ export const grcNav = [
   { href: "/app/evidence", label: "Evidence register", icon: FileCheck2 },
   { href: "/app/governance/scoring-policy", label: "Scoring policy", icon: Gauge },
   { href: "/app/frameworks", label: "Frameworks & compliance", icon: Scale },
+  { href: "/app/reports", label: "Report centre", icon: FileText },
   { href: "/app/emerging-risks", label: "Emerging risks", icon: Radar },
   { href: "/app/operations/jobs", label: "Job queue", icon: Activity },
   { href: "/app/vendors", label: "Third-party risk", icon: Building2 },

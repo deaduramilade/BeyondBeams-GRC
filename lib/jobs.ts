@@ -140,3 +140,26 @@ export async function runDueJobs(db: JobDb, handler: JobHandler, options: RunDue
   }
   return { processed: results.length, results };
 }
+
+/**
+ * Administrator retry for failed or cancelled jobs.
+ * Enforces tenant scoping and resets the job to QUEUED state for immediate processing.
+ */
+export async function retryJob(db: JobDb, id: string, tenantId: string) {
+  const job = await db.job.findFirst({
+    where: { id, tenantId, status: { in: ["FAILED", "CANCELLED", "PROCESSING"] } },
+  });
+  if (!job) return null;
+
+  return db.job.update({
+    where: { id: job.id },
+    data: {
+      status: "QUEUED",
+      runAfter: new Date(),
+      error: null,
+      lockedAt: null,
+      lockedBy: null,
+      startedAt: null,
+    },
+  });
+}

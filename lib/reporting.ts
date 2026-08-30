@@ -345,3 +345,468 @@ export async function gapAnalysisWorkbook(tenantId: string) {
 
   return Buffer.from(await workbook.xlsx.writeBuffer());
 }
+
+// ---------------------------------------------------------------------------
+// Phase 4: Treatment Status & Action Progress Report
+// ---------------------------------------------------------------------------
+export async function treatmentStatusCsv(tenantId: string) {
+  const plans = await db.treatmentPlan.findMany({
+    where: { tenantId },
+    include: {
+      risk: { select: { reference: true, title: true, status: true, treatment: true, residualScore: true } },
+      createdBy: { select: { name: true } },
+      actions: { select: { id: true, title: true, status: true, dueDate: true, owner: { select: { name: true } } } },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  const headers = ["Risk Reference", "Risk Title", "Risk Status", "Treatment Type", "Residual Score", "Plan Status", "Plan Summary", "Target Date", "Total Actions", "Completed Actions", "Overdue Actions"];
+  const now = new Date();
+  const rows = plans.map((p) => {
+    const total = p.actions.length;
+    const completed = p.actions.filter((a) => a.status === "COMPLETED").length;
+    const overdue = p.actions.filter((a) => a.status !== "COMPLETED" && a.dueDate && a.dueDate < now).length;
+    return [
+      p.risk.reference,
+      p.risk.title,
+      formatEnum(p.risk.status),
+      formatEnum(p.risk.treatment),
+      p.risk.residualScore ?? "",
+      formatEnum(p.status),
+      p.summary,
+      p.targetDate ? p.targetDate.toISOString().slice(0, 10) : "",
+      total,
+      completed,
+      overdue,
+    ];
+  });
+
+  return [headers, ...rows].map((row) => row.map(csvCell).join(",")).join("\r\n");
+}
+
+export async function treatmentStatusWorkbook(tenantId: string) {
+  const plans = await db.treatmentPlan.findMany({
+    where: { tenantId },
+    include: {
+      risk: { select: { reference: true, title: true, status: true, treatment: true, residualScore: true } },
+      createdBy: { select: { name: true } },
+      actions: { select: { id: true, title: true, status: true, dueDate: true, owner: { select: { name: true } } } },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  const workbook = new ExcelJS.Workbook();
+  const summarySheet = workbook.addWorksheet("Treatment Summary");
+  const headers = ["Risk Reference", "Risk Title", "Risk Status", "Treatment Type", "Residual Score", "Plan Status", "Plan Summary", "Target Date", "Total Actions", "Completed Actions", "Overdue Actions"];
+  summarySheet.addRow(headers);
+  summarySheet.getRow(1).font = { bold: true, color: { argb: "FFFFFFFF" } };
+  summarySheet.getRow(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0A2540" } };
+
+  const now = new Date();
+  for (const p of plans) {
+    const total = p.actions.length;
+    const completed = p.actions.filter((a) => a.status === "COMPLETED").length;
+    const overdue = p.actions.filter((a) => a.status !== "COMPLETED" && a.dueDate && a.dueDate < now).length;
+    summarySheet.addRow([
+      p.risk.reference,
+      p.risk.title,
+      formatEnum(p.risk.status),
+      formatEnum(p.risk.treatment),
+      p.risk.residualScore ?? "",
+      formatEnum(p.status),
+      p.summary,
+      p.targetDate ? p.targetDate.toISOString().slice(0, 10) : "",
+      total,
+      completed,
+      overdue,
+    ]);
+  }
+
+  const actionsSheet = workbook.addWorksheet("Treatment Actions");
+  const actionHeaders = ["Risk Reference", "Action Title", "Action Owner", "Status", "Due Date", "Is Overdue"];
+  actionsSheet.addRow(actionHeaders);
+  actionsSheet.getRow(1).font = { bold: true, color: { argb: "FFFFFFFF" } };
+  actionsSheet.getRow(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0A2540" } };
+
+  for (const p of plans) {
+    for (const a of p.actions) {
+      const isOverdue = a.status !== "COMPLETED" && a.dueDate && a.dueDate < now;
+      actionsSheet.addRow([
+        p.risk.reference,
+        a.title,
+        a.owner.name,
+        formatEnum(a.status),
+        a.dueDate ? a.dueDate.toISOString().slice(0, 10) : "",
+        isOverdue ? "YES" : "NO",
+      ]);
+    }
+  }
+
+  [summarySheet, actionsSheet].forEach((sheet) => {
+    sheet.columns.forEach((column) => {
+      column.width = Math.min(Math.max((column.header?.toString().length ?? 10) + 4, 14), 36);
+    });
+  });
+
+  return Buffer.from(await workbook.xlsx.writeBuffer());
+}
+
+export async function treatmentStatusPdf(tenantId: string) {
+  const plans = await db.treatmentPlan.findMany({
+    where: { tenantId },
+    include: {
+      risk: { select: { reference: true, title: true, status: true, treatment: true, residualScore: true } },
+      actions: { select: { id: true, title: true, status: true, dueDate: true } },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  const headers = ["Risk", "Treatment", "Plan Status", "Target Date", "Actions (Done/Total)"];
+  const rows = plans.map((p) => {
+    const total = p.actions.length;
+    const completed = p.actions.filter((a) => a.status === "COMPLETED").length;
+    return [
+      `${p.risk.reference} - ${p.risk.title}`,
+      formatEnum(p.risk.treatment),
+      formatEnum(p.status),
+      p.targetDate ? p.targetDate.toISOString().slice(0, 10) : "None",
+      `${completed}/${total}`,
+    ];
+  });
+
+  return rowsPdf("Treatment status and action progress", headers, rows);
+}
+
+// ---------------------------------------------------------------------------
+// Phase 4: Control Effectiveness Summary Report
+// ---------------------------------------------------------------------------
+export async function controlEffectivenessCsv(tenantId: string) {
+  const profiles = await db.controlProfile.findMany({
+    where: { tenantId },
+    include: {
+      frameworkControl: { include: { framework: { select: { name: true } } } },
+      owner: { select: { name: true } },
+      tests: { orderBy: { testDate: "desc" }, take: 1, select: { result: true, testDate: true } },
+    },
+    orderBy: { frameworkControl: { controlId: "asc" } },
+  });
+
+  const headers = ["Framework", "Control ID", "Title", "Owner", "Implementation Status", "Effectiveness", "Frequency", "Last Tested", "Last Outcome"];
+  const rows = profiles.map((p) => [
+    p.frameworkControl.framework.name,
+    p.frameworkControl.controlId,
+    p.frameworkControl.title,
+    p.owner?.name ?? "Unassigned",
+    formatEnum(p.implementationStatus),
+    formatEnum(p.effectiveness),
+    p.frequency ? formatEnum(p.frequency) : "Ad-hoc",
+    p.lastTestedAt ? p.lastTestedAt.toISOString().slice(0, 10) : "",
+    p.tests[0]?.result ? formatEnum(p.tests[0].result) : "",
+  ]);
+
+  return [headers, ...rows].map((row) => row.map(csvCell).join(",")).join("\r\n");
+}
+
+export async function controlEffectivenessWorkbook(tenantId: string) {
+  const profiles = await db.controlProfile.findMany({
+    where: { tenantId },
+    include: {
+      frameworkControl: { include: { framework: { select: { name: true } } } },
+      owner: { select: { name: true } },
+      tests: { orderBy: { testDate: "desc" }, take: 1, select: { result: true, testDate: true } },
+    },
+    orderBy: { frameworkControl: { controlId: "asc" } },
+  });
+
+  const workbook = new ExcelJS.Workbook();
+  const sheet = workbook.addWorksheet("Control Effectiveness");
+  const headers = ["Framework", "Control ID", "Title", "Owner", "Implementation Status", "Effectiveness", "Frequency", "Last Tested", "Last Outcome"];
+  sheet.addRow(headers);
+  sheet.getRow(1).font = { bold: true, color: { argb: "FFFFFFFF" } };
+  sheet.getRow(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0A2540" } };
+
+  for (const p of profiles) {
+    sheet.addRow([
+      p.frameworkControl.framework.name,
+      p.frameworkControl.controlId,
+      p.frameworkControl.title,
+      p.owner?.name ?? "Unassigned",
+      formatEnum(p.implementationStatus),
+      formatEnum(p.effectiveness),
+      p.frequency ? formatEnum(p.frequency) : "Ad-hoc",
+      p.lastTestedAt ? p.lastTestedAt.toISOString().slice(0, 10) : "",
+      p.tests[0]?.result ? formatEnum(p.tests[0].result) : "",
+    ]);
+  }
+
+  sheet.columns.forEach((column) => {
+    column.width = Math.min(Math.max((column.header?.toString().length ?? 10) + 4, 14), 36);
+  });
+
+  return Buffer.from(await workbook.xlsx.writeBuffer());
+}
+
+export async function controlEffectivenessPdf(tenantId: string) {
+  const profiles = await db.controlProfile.findMany({
+    where: { tenantId },
+    include: {
+      frameworkControl: { include: { framework: { select: { name: true } } } },
+      owner: { select: { name: true } },
+    },
+    orderBy: { frameworkControl: { controlId: "asc" } },
+  });
+
+  const headers = ["Control", "Framework", "Owner", "Implementation", "Effectiveness"];
+  const rows = profiles.map((p) => [
+    `${p.frameworkControl.controlId} ${p.frameworkControl.title}`,
+    p.frameworkControl.framework.name,
+    p.owner?.name ?? "Unassigned",
+    formatEnum(p.implementationStatus),
+    formatEnum(p.effectiveness),
+  ]);
+
+  return rowsPdf("Control effectiveness summary", headers, rows);
+}
+
+// ---------------------------------------------------------------------------
+// Phase 4: Overdue Items Report (Reviews + Actions)
+// ---------------------------------------------------------------------------
+export async function overdueItemsCsv(tenantId: string) {
+  const now = new Date();
+  const [overdueRisks, overdueActions] = await Promise.all([
+    db.risk.findMany({
+      where: { tenantId, deletedAt: null, nextReviewDate: { lt: now } },
+      include: { owner: { select: { name: true } } },
+      orderBy: { nextReviewDate: "asc" },
+    }),
+    db.treatmentAction.findMany({
+      where: { tenantId, status: { in: ["NOT_STARTED", "IN_PROGRESS", "BLOCKED"] }, dueDate: { lt: now } },
+      include: { owner: { select: { name: true } }, treatmentPlan: { include: { risk: { select: { reference: true } } } } },
+      orderBy: { dueDate: "asc" },
+    }),
+  ]);
+
+  const headers = ["Item Type", "Reference", "Title", "Accountable Owner", "Due Date", "Days Overdue", "Status / Severity"];
+  const rows: unknown[][] = [];
+
+  for (const r of overdueRisks) {
+    const days = Math.floor((now.getTime() - r.nextReviewDate.getTime()) / (1000 * 60 * 60 * 24));
+    rows.push(["Risk Review", r.reference, r.title, r.owner.name, r.nextReviewDate.toISOString().slice(0, 10), days, `Score ${r.residualScore ?? r.inherentScore}`]);
+  }
+
+  for (const a of overdueActions) {
+    const days = a.dueDate ? Math.floor((now.getTime() - a.dueDate.getTime()) / (1000 * 60 * 60 * 24)) : 0;
+    rows.push(["Treatment Action", a.treatmentPlan.risk.reference, a.title, a.owner.name, a.dueDate ? a.dueDate.toISOString().slice(0, 10) : "", days, formatEnum(a.status)]);
+  }
+
+  return [headers, ...rows].map((row) => row.map(csvCell).join(",")).join("\r\n");
+}
+
+export async function overdueItemsWorkbook(tenantId: string) {
+  const now = new Date();
+  const [overdueRisks, overdueActions] = await Promise.all([
+    db.risk.findMany({
+      where: { tenantId, deletedAt: null, nextReviewDate: { lt: now } },
+      include: { owner: { select: { name: true } }, businessUnit: { select: { name: true } } },
+      orderBy: { nextReviewDate: "asc" },
+    }),
+    db.treatmentAction.findMany({
+      where: { tenantId, status: { in: ["NOT_STARTED", "IN_PROGRESS", "BLOCKED"] }, dueDate: { lt: now } },
+      include: { owner: { select: { name: true } }, treatmentPlan: { include: { risk: { select: { reference: true, title: true } } } } },
+      orderBy: { dueDate: "asc" },
+    }),
+  ]);
+
+  const workbook = new ExcelJS.Workbook();
+
+  // Overdue Reviews Sheet
+  const reviewsSheet = workbook.addWorksheet("Overdue Risk Reviews");
+  const reviewHeaders = ["Reference", "Title", "Owner", "Business Unit", "Review Due Date", "Days Overdue", "Residual Score", "Status"];
+  reviewsSheet.addRow(reviewHeaders);
+  reviewsSheet.getRow(1).font = { bold: true, color: { argb: "FFFFFFFF" } };
+  reviewsSheet.getRow(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0A2540" } };
+
+  for (const r of overdueRisks) {
+    const days = Math.floor((now.getTime() - r.nextReviewDate.getTime()) / (1000 * 60 * 60 * 24));
+    reviewsSheet.addRow([
+      r.reference,
+      r.title,
+      r.owner.name,
+      r.businessUnit?.name ?? "",
+      r.nextReviewDate.toISOString().slice(0, 10),
+      days,
+      r.residualScore ?? r.inherentScore,
+      formatEnum(r.status),
+    ]);
+  }
+
+  // Overdue Actions Sheet
+  const actionsSheet = workbook.addWorksheet("Overdue Treatment Actions");
+  const actionHeaders = ["Risk Reference", "Action Title", "Action Owner", "Due Date", "Days Overdue", "Status"];
+  actionsSheet.addRow(actionHeaders);
+  actionsSheet.getRow(1).font = { bold: true, color: { argb: "FFFFFFFF" } };
+  actionsSheet.getRow(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0A2540" } };
+
+  for (const a of overdueActions) {
+    const days = a.dueDate ? Math.floor((now.getTime() - a.dueDate.getTime()) / (1000 * 60 * 60 * 24)) : 0;
+    actionsSheet.addRow([
+      a.treatmentPlan.risk.reference,
+      a.title,
+      a.owner.name,
+      a.dueDate ? a.dueDate.toISOString().slice(0, 10) : "",
+      days,
+      formatEnum(a.status),
+    ]);
+  }
+
+  [reviewsSheet, actionsSheet].forEach((sheet) => {
+    sheet.columns.forEach((column) => {
+      column.width = Math.min(Math.max((column.header?.toString().length ?? 10) + 4, 14), 36);
+    });
+  });
+
+  return Buffer.from(await workbook.xlsx.writeBuffer());
+}
+
+export async function overdueItemsPdf(tenantId: string) {
+  const now = new Date();
+  const [overdueRisks, overdueActions] = await Promise.all([
+    db.risk.findMany({
+      where: { tenantId, deletedAt: null, nextReviewDate: { lt: now } },
+      include: { owner: { select: { name: true } } },
+      orderBy: { nextReviewDate: "asc" },
+    }),
+    db.treatmentAction.findMany({
+      where: { tenantId, status: { in: ["NOT_STARTED", "IN_PROGRESS", "BLOCKED"] }, dueDate: { lt: now } },
+      include: { owner: { select: { name: true } }, treatmentPlan: { include: { risk: { select: { reference: true } } } } },
+      orderBy: { dueDate: "asc" },
+    }),
+  ]);
+
+  const headers = ["Item", "Reference", "Owner", "Due Date", "Days Overdue"];
+  const rows: unknown[][] = [];
+
+  for (const r of overdueRisks) {
+    const days = Math.floor((now.getTime() - r.nextReviewDate.getTime()) / (1000 * 60 * 60 * 24));
+    rows.push(["Risk Review", `${r.reference} ${r.title}`, r.owner.name, r.nextReviewDate.toISOString().slice(0, 10), `${days} days`]);
+  }
+
+  for (const a of overdueActions) {
+    const days = a.dueDate ? Math.floor((now.getTime() - a.dueDate.getTime()) / (1000 * 60 * 60 * 24)) : 0;
+    rows.push(["Action", `${a.treatmentPlan.risk.reference}: ${a.title}`, a.owner.name, a.dueDate ? a.dueDate.toISOString().slice(0, 10) : "", `${days} days`]);
+  }
+
+  return rowsPdf("Overdue risk reviews and treatment actions", headers, rows);
+}
+
+// ---------------------------------------------------------------------------
+// Phase 4: Exposure Summary Report
+// ---------------------------------------------------------------------------
+export async function exposureSummaryCsv(tenantId: string) {
+  const risks = await db.risk.findMany({
+    where: { tenantId, deletedAt: null },
+    include: riskInclude,
+    orderBy: { residualScore: "desc" },
+  });
+
+  const headers = ["Reference", "Title", "Category", "Owner", "Business Unit", "Inherent Score", "Residual Score", "Exposure Level", "Treatment", "Status"];
+  const rows = risks.map((r) => [
+    r.reference,
+    r.title,
+    formatEnum(r.category),
+    r.owner.name,
+    r.businessUnit?.name ?? "Unassigned",
+    r.inherentScore,
+    r.residualScore ?? r.inherentScore,
+    riskLevel(r.residualScore ?? r.inherentScore),
+    formatEnum(r.treatment),
+    formatEnum(r.status),
+  ]);
+
+  return [headers, ...rows].map((row) => row.map(csvCell).join(",")).join("\r\n");
+}
+
+export async function exposureSummaryWorkbook(tenantId: string) {
+  const [tenant, risks, breaches] = await Promise.all([
+    db.tenant.findUniqueOrThrow({ where: { id: tenantId }, select: { name: true } }),
+    db.risk.findMany({ where: { tenantId, deletedAt: null }, include: riskInclude, orderBy: { residualScore: "desc" } }),
+    db.appetiteBreach.findMany({ where: { tenantId, status: { in: ["OPEN", "ACKNOWLEDGED", "TREATING"] } }, include: { risk: { select: { reference: true } } } }),
+  ]);
+
+  const workbook = new ExcelJS.Workbook();
+  const summarySheet = workbook.addWorksheet("Exposure Overview");
+  summarySheet.addRow(["BeyondBeams GRC - Portfolio Exposure Summary"]);
+  summarySheet.addRow(["Workspace", tenant.name]);
+  summarySheet.addRow(["Generated At", new Date().toISOString()]);
+  summarySheet.addRow([]);
+
+  const total = risks.length;
+  const critical = risks.filter((r) => (r.residualScore ?? r.inherentScore) >= 20).length;
+  const high = risks.filter((r) => { const s = r.residualScore ?? r.inherentScore; return s >= 15 && s < 20; }).length;
+  const moderate = risks.filter((r) => { const s = r.residualScore ?? r.inherentScore; return s >= 7 && s < 15; }).length;
+  const low = risks.filter((r) => (r.residualScore ?? r.inherentScore) < 7).length;
+
+  summarySheet.addRow(["Metric", "Value"]);
+  summarySheet.addRow(["Total Active Risks", total]);
+  summarySheet.addRow(["Critical Exposure (≥ 20)", critical]);
+  summarySheet.addRow(["High Exposure (15–19)", high]);
+  summarySheet.addRow(["Moderate Exposure (7–14)", moderate]);
+  summarySheet.addRow(["Low Exposure (< 7)", low]);
+  summarySheet.addRow(["Active Appetite Breaches", breaches.length]);
+  summarySheet.getRow(5).font = { bold: true };
+
+  const registerSheet = workbook.addWorksheet("Ranked Risks");
+  const headers = ["Rank", "Reference", "Title", "Category", "Owner", "Business Unit", "Inherent Score", "Residual Score", "Exposure Level", "Treatment", "Status"];
+  registerSheet.addRow(headers);
+  registerSheet.getRow(1).font = { bold: true, color: { argb: "FFFFFFFF" } };
+  registerSheet.getRow(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0A2540" } };
+
+  risks.forEach((r, index) => {
+    const score = r.residualScore ?? r.inherentScore;
+    registerSheet.addRow([
+      index + 1,
+      r.reference,
+      r.title,
+      formatEnum(r.category),
+      r.owner.name,
+      r.businessUnit?.name ?? "Unassigned",
+      r.inherentScore,
+      score,
+      riskLevel(score),
+      formatEnum(r.treatment),
+      formatEnum(r.status),
+    ]);
+  });
+
+  [summarySheet, registerSheet].forEach((sheet) => {
+    sheet.columns.forEach((column) => {
+      column.width = Math.min(Math.max((column.header?.toString().length ?? 10) + 4, 14), 36);
+    });
+  });
+
+  return Buffer.from(await workbook.xlsx.writeBuffer());
+}
+
+export async function exposureSummaryPdf(tenantId: string) {
+  const risks = await db.risk.findMany({
+    where: { tenantId, deletedAt: null },
+    include: riskInclude,
+    orderBy: { residualScore: "desc" },
+  });
+
+  const headers = ["Reference", "Title", "Category", "Owner", "Score", "Level", "Treatment"];
+  const rows = risks.map((r) => {
+    const score = r.residualScore ?? r.inherentScore;
+    return [
+      r.reference,
+      r.title,
+      formatEnum(r.category),
+      r.owner.name,
+      score,
+      riskLevel(score),
+      formatEnum(r.treatment),
+    ];
+  });
+
+  return rowsPdf("Portfolio risk profile and exposure summary", headers, rows);
+}
