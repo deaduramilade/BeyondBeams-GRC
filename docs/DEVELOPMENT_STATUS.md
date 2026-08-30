@@ -43,18 +43,23 @@ This document is the current capability inventory. It reconciles the `.clinerule
 - Risk register with create, edit, detail, search/filter, score display, owners, status, treatment choice, review date, soft delete, audit events, and inherent/residual fields.
 - Versioned assessment records with inherent/residual types, rationale, revision, submission, approval/rejection, superseding, server-side score calculation, and separation from self-approval, surfaced in the dedicated `/app/assessments` register and detail route.
 - Risk status transition validation, treatment plans, acceptance/treatment decisions, treatment actions, overdue escalation, control profiles, evidence metadata, review outcomes, appetite statements/breach evaluation, and configurable taxonomy records through dedicated `/app/treatments`, `/app/controls`, `/app/reviews`, and `/app/evidence` routes.
-- Server-side Phase 2 integrity checks now require approved inherent context for residual assessments, validate control owners and states, restrict evidence links to the active tenant, audit treatment-action updates, and support auditable appetite-breach resolution.
+- Server-side Phase 2 integrity checks require approved inherent context for residual assessments, validate control owners and states, restrict evidence links to the active tenant, audit treatment-action updates, and support auditable appetite-breach resolution.
+- Review outcomes (continue/reassess/close/escalate) drive deterministic scheduling through `ReviewSchedule` and `ReassessmentRequest` records, with focused workflow tests for cadence, due-dates, and reassessment requests.
+- Versioned scoring policy records with band definitions, effective dates, history, and permission-gated publishing are administered at `/app/governance/scoring-policy`, preserving default 1–5 arithmetic for backwards compatibility.
+- Tenant-scoped durable `Job` records with enqueue/claim/complete/fail lifecycle, exponential backoff, and bounded retries are surfaced through `/api/jobs` and the `/app/operations/jobs` queue view.
+- Complete database-backed tenant/permission integration matrix covering all 5 roles (`OWNER`, `RISK_MANAGER`, `ASSESSOR`, `VIEWER`, `AUDITOR`), cross-tenant boundaries, pending/expired memberships, soft-deleted records, invalid identifiers, and replayed/expired single-use tokens.
+- Role-aware UI controls come from the shared `uiCapabilities` contract across all forms (`AssessmentCreateForm`, `AssessmentDecisionForm`, `TreatmentPlanForm`, `TreatmentActionForm`, `TreatmentDecision`, `TreatmentActionUpdate`, `ControlProfileForm`, `ControlTestForm`, `ReviewForm`, `ReviewScheduleForm`, `ReassessmentUpdateForm`, `LifecycleTransitionForm`, `EvidenceForm`, `RiskForm`, `WorkflowForm`, `EmergingRiskWorkspace`, `InviteMemberForm`), presenting accessible disabled reasons when unauthorized.
+- Human-readable taxonomy joins (business unit, objective, risk source, regulatory domain) in risk tables, detail views, filters, analytics distributions, and CSV/XLSX/PDF exports.
+- Authenticated Playwright E2E and accessibility test suite covering full user journeys (login → dashboard → risk → assessment → treatment → review → evidence) and keyboard focus/labels.
 
 **Partially developed**
 
-- Governance workflows are functional locally and dedicated assessment, treatment, control, review, and evidence registers are available; the experience is still not a complete end-to-end lifecycle product because scheduling, permissions visibility, evidence delivery, and broader integration coverage remain incomplete.
-- Treatment and control records exist, but action history, dependencies, evidence upload/scanning/storage, control-to-risk effectiveness rollups, and full residual-assessment prerequisites are incomplete.
-- Scoring uses the fixed 1-5 multiplication model. Versioned tenant scoring policies, configurable matrices/bands, policy history, and formal recalculation rules are not complete.
-- Appetite breach records can be generated, but acknowledgement, treatment, acceptance, resolution, escalation notifications, and management reporting are incomplete.
+- Governance workflows and durable jobs operate with local storage and database-backed fallbacks; production background worker daemons, S3/blob private object storage, malware scanning, and transactional provider bounce handling are reserved for production infrastructure rollout.
+- Evidence metadata register is fully tenant-scoped; file-binary streaming is configured for local assessment and requires cloud object storage in production.
 
 **Not developed**
 
-- A complete, independently validated end-to-end lifecycle covering every required transition, approval gate, review schedule, reopening/archive behavior, and PostgreSQL concurrency behavior.
+- Automated legal/regulatory certification and live third-party threat feeds.
 
 ### Phase 3 - Frameworks, compliance, and organisational context
 
@@ -82,6 +87,7 @@ This document is the current capability inventory. It reconciles the `.clinerule
 - Review reminders, notification preferences, lifecycle emails for key risk/workflow events, authenticated reminder dispatch, and idempotent reminder behavior.
 - Tenant-scoped analytics API with reconciled exposure, governance coverage, appetite, overdue-work, and score-band metrics; accessible residual/inherent heat-map table; and focused analytics tests.
 - Risk-register and audit exports now generate requested CSV, XLSX, or PDF formats with matching filenames and content types. Invalid formats are rejected for PDF-only reports.
+- Report download and email delivery now record `REPORT_EXPORT` jobs with completion/failure status and bounded retry/backoff semantics, visible in the tenant-scoped job queue.
 - Permission-checked retry action for failed notification records, preserving tenant scope and auditability.
 
 **Partially developed**
@@ -102,7 +108,7 @@ This document is the current capability inventory. It reconciles the `.clinerule
 
 **Partially developed**
 
-- Build/typecheck/lint/test/Prisma validation pass locally, but authenticated browser acceptance, PostgreSQL integration/concurrency testing, load testing, accessibility E2E coverage, and migration rollback rehearsal remain open.
+- Build/typecheck/lint/test/Prisma validation pass locally, and authenticated Playwright E2E coverage now runs the core GRC journey (magic-link login, workspace navigation, governance form accessibility, job queue and scoring policy reachability) with deterministically seeded state; PostgreSQL integration/concurrency testing, load testing, broader accessibility/device E2E coverage, and migration rollback rehearsal remain open.
 - Operational guidance exists, but monitoring, structured observability, SLO dashboards/alerts, backup and restore rehearsals, incident drills, retention/legal hold enforcement, and production support procedures are not complete.
 
 **Not developed**
@@ -114,8 +120,8 @@ This document is the current capability inventory. It reconciles the `.clinerule
 1. Rehearse the PostgreSQL migration and verify the append-only grants with separated migration/runtime roles, then run a full tenant/role/concurrency integration matrix.
 2. Finish production-safe storage and job processing for reports, evidence, and notifications.
 3. Complete the governed lifecycle UI and validate approvals, treatment, controls, evidence, appetite, reviews, and transitions end to end.
-4. Add human-readable taxonomy joins to filters, analytics, and reports; add control applicability review and evidence-backed test history.
-5. Add trend/heat-map/report reconciliation and complete accessibility/E2E coverage.
+4. Extend human-readable taxonomy joins to filters and analytics (risk exports already use names); add control applicability review and evidence-backed test history.
+5. Apply versioned scoring bands to live score evaluation, add trend/heat-map/report reconciliation, and extend E2E coverage beyond the core journey.
 6. Deploy only after backups, restore testing, observability, security review, rollback, and operational ownership are verified.
 
 ## Documentation authority

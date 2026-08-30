@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import type { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { requireRole, writeRoles } from "@/lib/authz";
+import { uiCapabilities } from "@/lib/ui-capabilities";
 import { PageHeader } from "@/components/page-header";
 import { RiskForm } from "@/components/risk-form";
 import { ensureComplianceCatalog } from "@/lib/compliance";
@@ -9,6 +10,7 @@ import { enabledControls, ensureTenantFrameworks } from "@/lib/frameworks";
 
 export default async function EditRiskPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await requireRole(writeRoles);
+  const capabilities = uiCapabilities(session.user.role);
   const { id } = await params;
   await ensureComplianceCatalog(session.user.tenantId);
   await ensureTenantFrameworks(session.user.tenantId);
@@ -20,5 +22,5 @@ export default async function EditRiskPage({ params }: { params: Promise<{ id: s
     db.taxonomyItem.findMany({ where: { tenantId: session.user.tenantId, active: true }, orderBy: [{ type: "asc" }, { sortOrder: "asc" }, { name: "asc" }] }),
   ]);
   if (!risk) notFound();
-  return <><PageHeader eyebrow={risk.reference} title="Edit risk" description="Update the assessment, organisational context, and obligations triggered by its scope."/><RiskForm users={users} references={references} controls={controls} taxonomy={taxonomy} mappedControlIds={risk.frameworkMappings.map((mapping: Prisma.RiskFrameworkMappingGetPayload<{ select: { frameworkControlId: true } }>) => mapping.frameworkControlId)} risk={{ ...risk, nextReviewDate: risk.nextReviewDate.toISOString().slice(0, 10) }}/></>;
+  return <><PageHeader eyebrow={risk.reference} title="Edit risk" description="Update the assessment, organisational context, and obligations triggered by its scope."/><RiskForm users={users} references={references} controls={controls} taxonomy={taxonomy} mappedControlIds={risk.frameworkMappings.map((mapping: Prisma.RiskFrameworkMappingGetPayload<{ select: { frameworkControlId: true } }>) => mapping.frameworkControlId)} risk={{ ...risk, nextReviewDate: risk.nextReviewDate.toISOString().slice(0, 10) }} allowed={capabilities["risk:update"]} disabledReason="Editing risks requires risk update permission."/></>;
 }

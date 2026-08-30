@@ -12,10 +12,18 @@ node_modules/
 # Local databases and runtime state
 prisma/dev.db
 prisma/dev.db-journal
+prisma/test-phase-2-integration.db
+prisma/test-phase-2-integration.db-journal
 *.db-shm
 *.db-wal
 *.sqlite-wal
 *.sqlite-shm
+
+# Local test artifacts
+.test-evidence/
+test-results/
+playwright-report/
+playwright/.cache/
 
 # Python environments, caches, and coverage output
 __pycache__/

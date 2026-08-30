@@ -42,9 +42,54 @@ export function AssessmentCreateForm({ risks, allowed = true }: { risks: Option[
 }
 
 export function AssessmentDecisionForm({ assessmentId, status, canSubmit, canDecide }: { assessmentId: string; status: string; canSubmit: boolean; canDecide: boolean }) {
-  const router = useRouter(); const [reason, setReason] = useState(""); const [message, setMessage] = useState(""); const [busy, setBusy] = useState(false);
-  async function run(action: () => Promise<Result>) { setBusy(true); const result = await action(); setMessage(result.error ?? "Saved successfully."); setBusy(false); if (!result.error) router.refresh(); }
-  return <div className="grid gap-3">{canSubmit && ["DRAFT", "REJECTED"].includes(status) && <Button disabled={busy} onClick={() => run(() => submitAssessment(assessmentId))}>Submit for independent decision</Button>}{canDecide && status === "SUBMITTED" && <><div><Label htmlFor={`decision-${assessmentId}`}>Decision rationale</Label><Input id={`decision-${assessmentId}`} value={reason} onChange={(event) => setReason(event.target.value)} placeholder="Document the approval or rejection basis"/></div><div className="flex gap-2"><Button disabled={busy || reason.trim().length < 3} onClick={() => run(() => decideAssessment(assessmentId, "APPROVED", reason))}>Approve</Button><Button variant="destructive" disabled={busy || reason.trim().length < 3} onClick={() => run(() => decideAssessment(assessmentId, "REJECTED", reason))}>Reject</Button></div></>}{message && <p role="status" className="text-xs text-muted-foreground">{message}</p>}</div>;
+  const router = useRouter();
+  const [reason, setReason] = useState("");
+  const [message, setMessage] = useState("");
+  const [busy, setBusy] = useState(false);
+  async function run(action: () => Promise<Result>) {
+    setBusy(true);
+    const result = await action();
+    setMessage(result.error ?? "Saved successfully.");
+    setBusy(false);
+    if (!result.error) router.refresh();
+  }
+  return (
+    <div className="grid gap-3">
+      {["DRAFT", "REJECTED"].includes(status) && (
+        canSubmit ? (
+          <Button disabled={busy} onClick={() => run(() => submitAssessment(assessmentId))}>
+            {busy ? <LoaderCircle className="size-4 animate-spin" /> : <Check className="size-4" />}
+            Submit for independent decision
+          </Button>
+        ) : (
+          <div className="space-y-2">
+            <Button disabled title="Assessment submission requires risk update permission.">Submit unavailable</Button>
+            <p className="text-xs text-muted-foreground" role="note">Assessment submission requires risk update permission.</p>
+          </div>
+        )
+      )}
+      {status === "SUBMITTED" && (
+        canDecide ? (
+          <>
+            <div>
+              <Label htmlFor={`decision-${assessmentId}`}>Decision rationale</Label>
+              <Input id={`decision-${assessmentId}`} value={reason} onChange={(event) => setReason(event.target.value)} placeholder="Document the approval or rejection basis" />
+            </div>
+            <div className="flex gap-2">
+              <Button disabled={busy || reason.trim().length < 3} onClick={() => run(() => decideAssessment(assessmentId, "APPROVED", reason))}>Approve</Button>
+              <Button variant="destructive" disabled={busy || reason.trim().length < 3} onClick={() => run(() => decideAssessment(assessmentId, "REJECTED", reason))}>Reject</Button>
+            </div>
+          </>
+        ) : (
+          <p className="text-xs text-muted-foreground" role="note">Deciding assessments requires assessment approval permission (Owner or Risk Manager).</p>
+        )
+      )}
+      {status === "APPROVED" && (
+        <p className="text-xs text-muted-foreground">This assessment is approved and locked.</p>
+      )}
+      {message && <p role="status" className="text-xs text-muted-foreground">{message}</p>}
+    </div>
+  );
 }
 
 export function TreatmentPlanForm({ risks, allowed = true }: { risks: Option[]; allowed?: boolean }) {

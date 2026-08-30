@@ -13,6 +13,7 @@ export type EnqueueJobInput = {
 export type JobHandler = (job: { id: string; type: JobType; tenantId: string; payload: unknown }) => Promise<unknown>;
 
 export type RunDueJobsOptions = {
+  tenantId?: string;
   workerId?: string;
   limit?: number;
   now?: Date;
