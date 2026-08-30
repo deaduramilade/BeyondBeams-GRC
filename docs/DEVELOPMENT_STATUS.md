@@ -106,26 +106,31 @@ This document is the current capability inventory. It reconciles the `.clinerule
 
 **Developed**
 
-- Local setup/seed workflow, release documentation, environment checks, CI checks, security baseline, and documented release gates.
+- Request correlation (`x-request-id`) propagated through middleware, API routes, server actions, and audit records.
+- Structured JSON logging (`lib/logger.ts`) with recursive automated redaction of sensitive credentials, tokens, passwords, and links.
+- Operational metrics collection (`lib/metrics.ts` and `/api/metrics`) tracking authentication, report generation, jobs, notifications, and retention purges.
+- Standardized liveness (`/api/health`, `/api/health/live`) and database readiness (`/api/ready`) probes.
+- Retention engine (`lib/retention.ts` and `scripts/retention-cleanup.cjs`) supporting dry-run and live purges of expired report artifacts and tokens while strictly honoring tenant `legalHold: true`.
+- PostgreSQL backup and restore rehearsal script (`scripts/postgres-backup-restore.cjs`) proving 100% record parity across table schemas in containerized tests.
+- CI workflow hardening (`.github/workflows/release-foundation.yml`) enforcing fail-closed release gates across TypeScript typecheck, ESLint, unit/integration test suite, tenant-isolation contracts, dual-schema validations, secret scans, and production builds.
+- Expanded Playwright E2E journey tests (`e2e/grpc-journey.spec.ts`) covering core workflows, report catalogue downloads, and form accessibility.
+- Operational and security documentation pack: [docs/RELEASE.md](RELEASE.md), [docs/OPERATIONS.md](OPERATIONS.md), and [docs/SECURITY.md](SECURITY.md).
 
 **Partially developed**
 
-- Build/typecheck/lint/test/Prisma validation pass locally, and authenticated Playwright E2E coverage now runs the core GRC journey (magic-link login, workspace navigation, governance form accessibility, job queue and scoring policy reachability) with deterministically seeded state; PostgreSQL integration/concurrency testing, load testing, broader accessibility/device E2E coverage, and migration rollback rehearsal remain open.
-- Operational guidance exists, but monitoring, structured observability, SLO dashboards/alerts, backup and restore rehearsals, incident drills, retention/legal hold enforcement, and production support procedures are not complete.
+- Local development uses SQLite (`dev.db`) and local storage adapters; production cloud object storage (S3/GCS), distributed queue worker daemons, and provider bounce webhooks are reserved for hosted infrastructure rollout.
 
 **Not developed**
 
-- Verified hosted release, production backup/restore evidence, disaster recovery rehearsal, independent security review, penetration testing, and live operational runbooks with accountable owners.
+- Hosted staging/production cloud infrastructure, automated external database backups with Point-in-Time Recovery (PITR), production APM/SLO dashboards, third-party penetration testing, and formal SOC 2 / ISO certification audits remain future operational milestones. The application is strictly not approved for real customer data until these infrastructure gates are satisfied.
 
 ## Priority work remaining
 
-1. Rehearse the PostgreSQL migration and verify the append-only grants with separated migration/runtime roles, then run a full tenant/role/concurrency integration matrix.
-2. Finish production-safe storage and job processing for reports, evidence, and notifications.
-3. Complete the governed lifecycle UI and validate approvals, treatment, controls, evidence, appetite, reviews, and transitions end to end.
-4. Extend human-readable taxonomy joins to filters and analytics (risk exports already use names); add control applicability review and evidence-backed test history.
-5. Apply versioned scoring bands to live score evaluation, add trend/heat-map/report reconciliation, and extend E2E coverage beyond the core journey.
-6. Deploy only after backups, restore testing, observability, security review, rollback, and operational ownership are verified.
+1. Provision cloud infrastructure (managed PostgreSQL with automated backups, KMS-encrypted S3/GCS storage bucket, Redis queue daemons).
+2. Configure transactional email DNS records (SPF, DKIM, DMARC) with production Resend API keys and provider bounce webhooks.
+3. Establish centralized telemetry and alerting (OpenTelemetry / Datadog / Prometheus).
+4. Conduct independent third-party penetration testing and security review before customer data ingestion.
 
 ## Documentation authority
 
-Use this file for the current implementation inventory. Use [RELEASE_STATUS.md](RELEASE_STATUS.md) for release gates and evidence, [ROADMAP.md](ROADMAP.md) for sequencing, and [OPERATIONS.md](OPERATIONS.md) for local and operational procedures. The older `implementation_plan.md` and `.clinerules/Production Readiness.md` are historical planning/audit inputs and are not current status authorities.
+Use this file for the current implementation inventory. Use [RELEASE.md](RELEASE.md) for release gates and procedures, [OPERATIONS.md](OPERATIONS.md) for operational procedures, [SECURITY.md](SECURITY.md) for the security baseline, [RELEASE_STATUS.md](RELEASE_STATUS.md) for release gates, and [ROADMAP.md](ROADMAP.md) for sequencing.

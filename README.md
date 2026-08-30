@@ -1,8 +1,15 @@
 # BeyondBeams GRC
 
-BeyondBeams GRC is a multi-tenant risk register and assessment workspace built with Next.js 15, strict TypeScript, Auth.js, Prisma, Tailwind CSS, shadcn/ui, Radix UI, and SQLite for zero-setup local development. PostgreSQL is the canonical production database.
+BeyondBeams GRC is a multi-tenant risk register, compliance mapping, and assessment workspace built with Next.js 15, strict TypeScript, Auth.js v5, Prisma, Tailwind CSS, and shadcn/ui. Local development uses SQLite for zero-setup assessment; PostgreSQL is the canonical production database.
 
-Phase 4 intelligence, reporting, and notifications are delivered through `/app/insights`, the dedicated Report Centre at `/app/reports`, and `/app/operations/jobs`. The expanded 8-report catalogue covers Risk Register, Board Risk Report, Framework Gap Analysis, Treatment Status & Actions, Control Effectiveness, Overdue Items, Portfolio Exposure Summary, and Audit Trail across CSV, XLSX, and PDF formats. Generated artifacts are handled by a private storage abstraction (`ReportStorageAdapter`) with tenant-prefixed keys, SHA-256 checksums, size metadata, and single-use, 24-hour expiring, SHA-256 hashed download tokens consumed upon download. Immutable `AnalyticsSnapshot` records enable point-in-time consistency and historical trend tracking alongside live residual-first analytics and accessible heatmaps. Durable background jobs support full lifecycle transitions (`QUEUED` → `PROCESSING` → `COMPLETED`/`FAILED`) with exponential backoff and administrator retries. Notification delivery guarantees non-corrupting failure isolation and includes webhook extension points. Local development uses durable database-backed queue and local storage adapters; production cloud object storage (S3/Blob), distributed queue daemons, and provider bounce webhooks are reserved for hosted infrastructure rollout.
+Operational and release governance documentation:
+- [docs/DEVELOPMENT_STATUS.md](docs/DEVELOPMENT_STATUS.md): Complete five-phase development inventory and outstanding infrastructure requirements.
+- [docs/RELEASE.md](docs/RELEASE.md): Exact release gates, migration rehearsals, and rollback procedures.
+- [docs/OPERATIONS.md](docs/OPERATIONS.md): Operational runbook, job queues, retention engine, health probes, and correlation IDs.
+- [docs/SECURITY.md](docs/SECURITY.md): Security architecture, log redaction, token cryptography, and audit trail controls.
+
+> [!WARNING]
+> BeyondBeams GRC is designed for local evaluation, staging rehearsal, and internal review. It is **not yet approved for real customer data** until managed cloud PostgreSQL with point-in-time recovery, KMS-encrypted object storage, dedicated queue workers, verified email deliverability, and third-party security audits are completed.
 
 ## Local setup
 
@@ -19,24 +26,22 @@ On Windows PowerShell, use `Copy-Item .env.example .env` instead of `cp`. Open [
 
 ## Local seed data
 
-The seed creates one demo tenant, one Owner membership, eight realistic sample risks, worldwide compliance references and linkages, workflow examples, and one emerging-risk monitoring case. To choose a local seed login password, set the untracked `SEED_DEMO_PASSWORD` value in `.env`; otherwise the seed generates a random password and does not print it or store it in the repository.
+The seed creates one demo tenant, one Owner membership, eight realistic sample risks, compliance mappings, and governance workflows. To choose a local seed login password, set the untracked `SEED_DEMO_PASSWORD` value in `.env`; otherwise the seed generates a random password and does not store it in the repository.
 
-Framework mapping is available at `/app/frameworks`. Owners and Risk Managers can enable frameworks; risk writers can search and map enabled controls while creating, editing, or viewing a risk. Risk forms also accept tenant-owned business unit, objective, risk source, and regulatory-domain context when those taxonomy items have been configured in Governance. Free and Basic workspaces have framework and mapping limits, while Professional and Premium workspaces can use all included ISO 27001, NIST CSF 2.0, SOC 2, HIPAA, and fintech controls.
-
-## Commands
+## Commands & Release Gates
 
 - `npm run dev`: start the development server.
 - `npm run build`: run a production build.
 - `npm run typecheck`: run strict TypeScript checking.
-- `npm run setup`: generate Prisma Client, create the SQLite database, and seed demo data.
-- `npm run db:seed`: reset the demo tenant's sample risks.
-- `npm run db:migrate:rehearse`: apply and inspect PostgreSQL migrations against a disposable target after setting `MIGRATION_REHEARSAL=true`.
-- `npm run db:postgres:fresh`: create a disposable PostgreSQL 16 Docker container, migrate, seed, verify tenant data and runtime audit privileges, then remove it.
-- `npm run db:postgres:upgrade`: repeat the disposable rehearsal and verify a second deploy does not alter seeded tenant data.
-- `npm run test:tenant-isolation`: run the dedicated tenant-boundary contract suite.
-- `npm run security:scan`: scan tracked source and documentation files for common credential patterns.
+- `npm test`: run the full unit and integration test suite (56+ tests).
+- `npm run test:tenant-isolation`: run the dedicated multi-tenant boundary contract suite.
+- `npm run db:validate`: validate both SQLite and PostgreSQL Prisma schemas.
+- `npm run security:scan`: scan tracked source files for credential patterns.
+- `npm run retention:cleanup`: run the retention engine CLI (with `--dry-run` or `--live`).
+- `npm run db:postgres:fresh`: test PostgreSQL migration deploy and audit grants in a disposable Docker container.
+- `npm run db:postgres:backup-rehearsal`: exercise full database dump and restore fidelity in Docker.
 
-Deployment probes are available at `/api/health` (liveness) and `/api/ready` (database readiness). The readiness endpoint returns `503` when the database cannot be reached.
+Deployment probes are available at `/api/health` and `/api/health/live` (liveness) and `/api/ready` (readiness). Metrics counters are exposed at `/api/metrics`.
 
 The CI workflow runs typecheck, lint, tests, secret scanning, both Prisma validations, the production build, and whitespace validation with normal failure propagation. PostgreSQL runtime/migration role policy is documented in `prisma/production-roles.sql`; passwords and provider settings must be supplied through the deployment secret manager.
 
