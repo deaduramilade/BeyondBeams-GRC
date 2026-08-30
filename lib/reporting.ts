@@ -18,11 +18,18 @@ export async function exportAllowance(tenantId: string, format: "PDF" | "XLSX" |
 }
 
 function csvCell(value: unknown) { return `"${String(value ?? "").replaceAll('"', '""')}"`; }
-type RiskExportRow = Awaited<ReturnType<typeof db.risk.findMany>>[number] & { owner: { name: string } };
+const riskInclude = {
+  owner: { select: { name: true } },
+  businessUnit: { select: { name: true } },
+  objective: { select: { name: true } },
+  riskSource: { select: { name: true } },
+  regulatoryDomain: { select: { name: true } },
+} as const;
+type RiskExportRow = Awaited<ReturnType<typeof db.risk.findMany<{ include: typeof riskInclude }>>>[number];
 function riskRows(risks: RiskExportRow[]) {
-  return risks.map((risk) => [risk.reference, risk.title, risk.description, formatEnum(risk.category), risk.owner.name, risk.inherentLikelihood, risk.inherentImpact, risk.inherentScore, risk.residualLikelihood ?? "", risk.residualImpact ?? "", risk.residualScore ?? "", formatEnum(risk.treatment), formatEnum(risk.status), risk.nextReviewDate.toISOString().slice(0, 10), risk.updatedAt.toISOString(), risk.businessUnitId ?? "", risk.objectiveId ?? "", risk.riskSourceId ?? "", risk.regulatoryDomainId ?? ""]);
+  return risks.map((risk) => [risk.reference, risk.title, risk.description, formatEnum(risk.category), risk.owner.name, risk.inherentLikelihood, risk.inherentImpact, risk.inherentScore, risk.residualLikelihood ?? "", risk.residualImpact ?? "", risk.residualScore ?? "", formatEnum(risk.treatment), formatEnum(risk.status), risk.nextReviewDate.toISOString().slice(0, 10), risk.updatedAt.toISOString(), risk.businessUnit?.name ?? "", risk.objective?.name ?? "", risk.riskSource?.name ?? "", risk.regulatoryDomain?.name ?? ""]);
 }
-export const riskHeaders = ["Reference", "Title", "Description", "Category", "Owner", "Inherent likelihood", "Inherent impact", "Inherent score", "Residual likelihood", "Residual impact", "Residual score", "Treatment", "Status", "Next review date", "Last updated", "Business unit ID", "Objective ID", "Risk source ID", "Regulatory domain ID"];
+export const riskHeaders = ["Reference", "Title", "Description", "Category", "Owner", "Inherent likelihood", "Inherent impact", "Inherent score", "Residual likelihood", "Residual impact", "Residual score", "Treatment", "Status", "Next review date", "Last updated", "Business unit", "Objective", "Risk source", "Regulatory domain"];
 
 async function rowsPdf(title: string, headers: string[], rows: unknown[][]) {
   const doc = new PDFDocument({ size: "A4", margin: 42 }); const chunks: Buffer[] = [];
@@ -37,16 +44,16 @@ async function rowsPdf(title: string, headers: string[], rows: unknown[][]) {
 }
 
 export async function riskPdf(tenantId: string) {
-  const risks = await db.risk.findMany({ where: { tenantId, deletedAt: null }, include: { owner: { select: { name: true } } }, orderBy: { residualScore: "desc" } });
+  const risks = await db.risk.findMany({ where: { tenantId, deletedAt: null }, include: riskInclude, orderBy: { residualScore: "desc" } });
   return rowsPdf("Risk register", riskHeaders, riskRows(risks));
 }
 
 export async function riskCsv(tenantId: string) {
-  const risks = await db.risk.findMany({ where: { tenantId, deletedAt: null }, include: { owner: { select: { name: true } } }, orderBy: { residualScore: "desc" } });
+  const risks = await db.risk.findMany({ where: { tenantId, deletedAt: null }, include: riskInclude, orderBy: { residualScore: "desc" } });
   return [riskHeaders, ...riskRows(risks)].map((row) => row.map(csvCell).join(",")).join("\r\n");
 }
 export async function riskWorkbook(tenantId: string) {
-  const risks = await db.risk.findMany({ where: { tenantId, deletedAt: null }, include: { owner: { select: { name: true } } }, orderBy: { residualScore: "desc" } });
+  const risks = await db.risk.findMany({ where: { tenantId, deletedAt: null }, include: riskInclude, orderBy: { residualScore: "desc" } });
   const workbook = new ExcelJS.Workbook(); const sheet = workbook.addWorksheet("Risk Register");
   sheet.addRow(riskHeaders); riskRows(risks).forEach((row) => sheet.addRow(row));
   sheet.getRow(1).font = { bold: true, color: { argb: "FFFFFFFF" } }; sheet.getRow(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0A2540" } };
