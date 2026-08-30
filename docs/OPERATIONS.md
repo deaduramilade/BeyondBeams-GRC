@@ -1,43 +1,97 @@
-# Development & Operations Guide
-## Current application
-The canonical application is the root Next.js 15 App Router project. The former `frontend/` and `backend/` directories are migration history and are not the deployable service.
+# BeyondBeams GRC – Operations & Runbook
 
-## Local workflow
-From the repository root, install dependencies, copy `.env.example` to `.env`, run `npm run setup`, and start `npm run dev`. Use `npm run typecheck`, `npm run lint`, `npm test`, `npm run db:validate`, and `npm run build` for the release-foundation gate.
+## 1. Architectural Overview
+BeyondBeams GRC is a Next.js 15 App Router application with strict TypeScript, Auth.js v5 authentication, Prisma ORM, Tailwind CSS, and shadcn/ui. Local development uses SQLite (`dev.db`). Canonical production environments target managed PostgreSQL 16+.
 
-## Validation
-- TypeScript: `npm run typecheck`.
-- Tests: `npm test`.
-- Prisma schemas: `npm run db:validate`.
-- Production build: `npm run build`.
-- Before release, test permissions, data isolation, score boundaries, audit events, and PostgreSQL migration rollback.
-- Phase 2 local security checks: `npm test`, `npm run typecheck`, `npm run db:validate`, `npm run build`, and `git diff --check`.
-- Report download URLs are single-use bearer credentials. Treat them as confidential and verify replay returns HTTP 410.
-- Owners and Risk Managers must enroll in TOTP MFA before production access. Store `AUTH_SECRET` only in the managed secret store; it encrypts MFA secrets and signs sessions.
-- Deployment probes: `GET /api/health` is a dependency-free liveness check; `GET /api/ready` verifies database connectivity and returns HTTP 503 without exposing database details when unavailable.
-- Phase 2 policy tests verify that residual assessments require approved inherent context, control owners belong to the tenant, evidence links resolve only inside the tenant, treatment actions can be audited through state changes, and appetite breaches require a reasoned resolution.
-- Phase 4 analytics are available at `GET /api/analytics` and are private, tenant-scoped, and non-cacheable. The insights page includes a semantic table alternative to the heat map. Risk-register and audit reports support CSV/XLSX/PDF with format-matching response headers.
-- `npm run security:scan` scans tracked non-environment files and fails on common private-key, API-key, or credentialed PostgreSQL URL patterns without printing secret values. CI runs the same check.
-- `npm run db:migrate:rehearse` is intentionally guarded by `MIGRATION_REHEARSAL=true` and a PostgreSQL `DATABASE_URL`; use it only against a disposable database because it changes the target schema.
-- Middleware propagates `x-request-id` into downstream request headers and the response for `/app/*` and `/api/*`. The central audit helper records it with source, forwarded client address, user agent, before/after payloads, and a sensitive-change reason when supplied. It is a correlation identifier, not an authentication credential; logs must still avoid secrets and sensitive payloads.
-- `npm run db:postgres:fresh` and `npm run db:postgres:upgrade` use a self-cleaning PostgreSQL 16 Docker container. They generate random ephemeral credentials, deploy migrations, seed and verify the tenant/risk counts, apply `prisma/production-roles.sql`, prove that `grc_runtime` can insert but cannot update/delete/truncate audit rows, restore the SQLite Prisma client, and remove the container even on failure.
-- The forward-only audit-context migration is `prisma/migrations/20260827090000_phase1_audit_context`. Never move these columns into an earlier migration after that migration history may have been applied.
-- `npm run test:tenant-isolation` validates shared active-membership, tenant-risk, soft-delete, and single-use token predicates. It supplements rather than replaces the full PostgreSQL/authenticated integration matrix still required before production.
+---
 
-## Data and security
-- Local `.env` files are never committed.
-- `VITE_*` values are public and must contain no credentials.
-- Production secrets belong in a managed secret store.
-- The application enforces tenant scope and role checks server-side; UI controls are not security boundaries. Tenant isolation still needs a dedicated automated integration test matrix before public exposure.
-- Logs must avoid passwords, tokens, sensitive personal data, and full evidence contents.
-- Failed notification retries are administrator-only and create a new delivery/audit record. Do not replay notification bearer links outside their original expiry policy.
-- Framework catalogue source/applicability metadata and risk taxonomy context are governance records, not certification evidence by themselves. Reconcile source versions and applicability with the accountable compliance owner before external reporting.
-- The Phase 3 context migration is `prisma/migrations/20260825120000_phase3_context_governance`; apply it only through `npm run db:migrate:deploy` in PostgreSQL rehearsal or deployment environments.
-- PostgreSQL audit protection: the security migration installs an append-only trigger and revokes `UPDATE`, `DELETE`, and `TRUNCATE` from `PUBLIC`. Production database ownership must remain with a migration/administration role separate from the runtime role; verify those grants during migration rehearsal.
-- `prisma/production-roles.sql` is a credential-free policy template for separating schema migration ownership from the runtime role. Apply and verify it with a PostgreSQL administration role; the repository does not claim that this has been run against production PostgreSQL.
+## 2. Health & Readiness Probes
 
-## Change discipline
-Update `MEMORY.md` with completed work and known gaps. Add material design changes to `DECISIONS.md`. Keep `ROADMAP.md` and `docs/RELEASE_STATUS.md` aligned with actual implementation. Do not mark PostgreSQL durability, auth, compliance, or production audit persistence complete until it exists and is tested.
+The application provides standardized probes for Kubernetes, Docker, and load balancers:
 
-## Incident basics
-Preserve request IDs and relevant audit events, restrict access to incident data, document timeline and impact, rotate exposed credentials, and record corrective actions. Never edit historical audit records in place.
+- **Liveness Probes**:
+  - `GET /api/health`
+  - `GET /api/health/live`
+  - Returns `HTTP 200` with `Cache-Control: no-store, no-cache, must-revalidate`.
+- **Readiness Probe**:
+  - `GET /api/ready`
+  - Executes `SELECT 1` against the database.
+  - Returns `HTTP 200` with uptime when reachable, or `HTTP 503` when the database is unavailable.
+
+---
+
+## 3. Observability, Logging, and Request Correlation
+
+### Request Correlation IDs
+Every incoming request to `/app/*` and `/api/*` is assigned a unique `x-request-id` header in `middleware.ts`. This correlation ID is:
+1. Propagated through downstream server actions and API handlers.
+2. Injected into response headers (`x-request-id`).
+3. Logged in audit events (`AuditEvent`) and structured logs.
+
+### Structured JSON Logging (`lib/logger.ts`)
+The application outputs structured JSON logs to standard output:
+```json
+{
+  "timestamp": "2026-08-30T10:00:00.000Z",
+  "level": "info",
+  "message": "Generated report risk-register.csv",
+  "correlationId": "f81d4fae-7dec-11d0-a765-00a0c91e6bf6",
+  "tenantId": "cly123456",
+  "userId": "usr_789"
+}
+```
+**Strict Redaction Rule**: Secrets, passwords, session cookies, raw tokens, magic-link URLs, invitation URLs, and report download tokens are automatically sanitized via recursive regex filtering before serialization.
+
+### Operational Metrics (`lib/metrics.ts` & `/api/metrics`)
+In-memory counters aggregate key operations:
+- `auth_login_attempts_total{method, status}`
+- `report_generations_total{type, format, status}`
+- `job_executions_total{type, status}`
+- `notification_deliveries_total{type, status}`
+- `retention_purged_records_total{entityType}`
+
+Metrics are viewable via `GET /api/metrics`.
+
+---
+
+## 4. Background Job Processing & Retries
+
+Background work (report generation, notification delivery, review reminders, analytics snapshots) is managed through the durable `Job` table:
+- **States**: `QUEUED` → `PROCESSING` → `COMPLETED` / `FAILED` / `CANCELLED`.
+- **Backoff Delay**: Exponential backoff doubling on each attempt (`1s, 2s, 4s, 8s...` up to `1h`).
+- **Terminal Failure**: Marked `FAILED` after 3 failed attempts.
+- **Admin Retries**: Owners and Risk Managers can retry failed jobs from `/app/operations/jobs` or via `retryJobAction`.
+
+---
+
+## 5. Retention Engine & Legal-Hold Governance
+
+### Retention Lifecycle
+- **Expired Report Artifacts**: Purged 30 days after generation or when `downloadExpires` has elapsed.
+- **Expired Tokens**: Verification and password reset tokens purged upon expiration.
+- **Soft-Deleted Risks**: Records with `deletedAt` older than the tenant's `retentionDays` (default: 365) are permanently purged unless Legal Hold is active.
+
+### Legal-Hold Rule
+When a tenant has `legalHold: true`, soft-deleted records and evidence are **never deleted**. Retention cleanup logs an audit record noting that legal hold is active and skips deletion.
+
+### Running Retention Cleanup
+1. **Dry-Run Mode (Safe simulation)**:
+   ```powershell
+   node scripts/retention-cleanup.cjs --dry-run
+   ```
+2. **Live Purge Mode**:
+   ```powershell
+   node scripts/retention-cleanup.cjs --live
+   ```
+3. **UI Action**:
+   Triggered via `triggerRetentionCleanupAction` in Organisation Settings.
+
+---
+
+## 6. Local Rehearsal Commands
+
+- **Fresh PostgreSQL Deploy Rehearsal**: `npm run db:postgres:fresh`
+- **Upgrade Migration Rehearsal**: `npm run db:postgres:upgrade`
+- **Backup & Restore Rehearsal**: `npm run db:postgres:backup-rehearsal`
+- **Multi-Tenant Boundary Test**: `npm run test:tenant-isolation`
+- **Secret Scanner**: `npm run security:scan`
