@@ -78,6 +78,10 @@ enum ReportType {
   BOARD_REPORT
   GAP_ANALYSIS
   AUDIT_TRAIL
+  TREATMENT_STATUS
+  CONTROL_EFFECTIVENESS
+  OVERDUE_ITEMS
+  EXPOSURE_SUMMARY
 }
 
 enum ExportFormat {
@@ -164,6 +168,7 @@ enum JobType {
   REPORT_EXPORT
   NOTIFICATION_DELIVERY
   REVIEW_REMINDER
+  ANALYTICS_SNAPSHOT
 }
 
 enum ReassessmentStatus {
@@ -209,6 +214,7 @@ model Tenant {
   jobs                   Job[]
   reviewSchedules        ReviewSchedule[]
   reassessmentRequests   ReassessmentRequest[]
+  analyticsSnapshots     AnalyticsSnapshot[]
 }
 
 model RateLimitBucket {
@@ -278,6 +284,7 @@ model User {
   requestedReassessments        ReassessmentRequest[]    @relation("ReassessmentRequester")
   assignedReassessments         ReassessmentRequest[]    @relation("ReassessmentAssignee")
   decidedReassessments          ReassessmentRequest[]    @relation("ReassessmentDecider")
+  createdSnapshots              AnalyticsSnapshot[]      @relation("SnapshotCreator")
 
   @@index([tenantId])
   @@index([tenantId, email])
@@ -920,6 +927,9 @@ model ExportHistory {
   tenant            Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   generatedBy       User         @relation(fields: [generatedById], references: [id], onDelete: Cascade)
   artifactBase64    String?
+  storageKey        String?
+  checksum          String?
+  sizeBytes         Int?
   downloadTokenHash String?      @unique
   downloadExpires   DateTime?
   downloadedAt      DateTime?
@@ -974,5 +984,38 @@ model SavedReport {
 
   @@index([tenantId, createdAt])
   @@index([tenantId, scheduleEnabled, nextRunAt])
+  @@index([createdById])
+}
+
+model AnalyticsSnapshot {
+  id                            String   @id @default(cuid())
+  tenantId                      String
+  asOfDate                      DateTime
+  period                        String   @default("DAILY")
+  activeRiskCount               Int
+  totalExposure                 Int
+  averageExposure               Float
+  appetiteBreachCount           Int
+  overdueReviewCount            Int
+  openTreatmentCount            Int
+  treatmentActionCount          Int
+  overdueActionCount            Int
+  controlProfileCount           Int
+  effectiveControlCount         Int
+  treatmentCoveragePercent      Float
+  controlEffectivenessPercent   Float
+  levelDistributionJson         Json     @default("{}")
+  categoryDistributionJson      Json     @default("{}")
+  businessUnitDistributionJson  Json     @default("{}")
+  objectiveDistributionJson     Json     @default("{}")
+  heatMapJson                   Json     @default("[]")
+  reconciliationJson            Json     @default("{}")
+  createdById                   String?
+  createdAt                     DateTime @default(now())
+  tenant                        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdBy                     User?    @relation("SnapshotCreator", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@unique([tenantId, asOfDate, period])
+  @@index([tenantId, asOfDate])
   @@index([createdById])
 }

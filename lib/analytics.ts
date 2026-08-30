@@ -128,3 +128,86 @@ export async function getPortfolioAnalytics(tenantId: string, asOf = new Date())
   ]);
   return calculatePortfolioAnalytics({ risks, appetiteBreachCount, openTreatmentCount, treatmentActionCount, overdueActionCount, controlProfileCount, effectiveControlCount, asOf });
 }
+
+export async function createAnalyticsSnapshot(
+  tenantId: string,
+  period = "DAILY",
+  actorId?: string
+) {
+  const asOf = new Date();
+  const asOfDate = new Date(Date.UTC(asOf.getUTCFullYear(), asOf.getUTCMonth(), asOf.getUTCDate()));
+
+  const analytics = await getPortfolioAnalytics(tenantId, asOf);
+
+  const data = {
+    activeRiskCount: analytics.activeRiskCount,
+    totalExposure: analytics.totalExposure,
+    averageExposure: analytics.averageExposure,
+    appetiteBreachCount: analytics.appetiteBreachCount,
+    overdueReviewCount: analytics.overdueReviewCount,
+    openTreatmentCount: analytics.openTreatmentCount,
+    treatmentActionCount: analytics.treatmentActionCount,
+    overdueActionCount: analytics.overdueActionCount,
+    controlProfileCount: analytics.controlProfileCount,
+    effectiveControlCount: analytics.effectiveControlCount,
+    treatmentCoveragePercent: analytics.treatmentCoveragePercent,
+    controlEffectivenessPercent: analytics.controlEffectivenessPercent,
+    levelDistributionJson: JSON.stringify(analytics.levelDistribution),
+    categoryDistributionJson: JSON.stringify(analytics.categoryDistribution),
+    businessUnitDistributionJson: JSON.stringify(analytics.businessUnitDistribution ?? {}),
+    objectiveDistributionJson: JSON.stringify(analytics.objectiveDistribution ?? {}),
+    heatMapJson: JSON.stringify(analytics.heatMap),
+    reconciliationJson: JSON.stringify(analytics.reconciliation),
+    createdById: actorId ?? null,
+  };
+
+  const existing = await db.analyticsSnapshot.findUnique({
+    where: {
+      tenantId_asOfDate_period: {
+        tenantId,
+        asOfDate,
+        period,
+      },
+    },
+  });
+
+  let snapshot;
+  if (existing) {
+    snapshot = await db.analyticsSnapshot.update({
+      where: { id: existing.id },
+      data,
+    });
+  } else {
+    snapshot = await db.analyticsSnapshot.create({
+      data: {
+        tenantId,
+        asOfDate,
+        period,
+        ...data,
+      },
+    });
+  }
+
+  if (actorId) {
+    await db.auditEvent.create({
+      data: {
+        tenantId,
+        actorId,
+        action: "CREATE",
+        entityType: "AnalyticsSnapshot",
+        entityId: snapshot.id,
+        summary: `Captured immutable ${period.toLowerCase()} analytics snapshot (total exposure: ${analytics.totalExposure})`,
+      },
+    }).catch(() => undefined);
+  }
+
+  return snapshot;
+}
+
+export async function getLatestAnalyticsSnapshot(tenantId: string) {
+  return db.analyticsSnapshot.findFirst({
+    where: { tenantId },
+    orderBy: { createdAt: "desc" },
+  });
+}
+

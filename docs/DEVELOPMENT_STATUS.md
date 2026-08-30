@@ -85,23 +85,22 @@ This document is the current capability inventory. It reconciles the `.clinerule
 
 **Developed**
 
-- Dashboard risk counts, exposure bands, review-due indicators, priority-risk views, category concentration insights, risk-register CSV/XLSX exports, board PDF, gap-analysis PDF, and audit export.
-- Tenant-scoped report records/download flow, hashed single-use expiring report tokens, private no-store download responses, export quotas, audit records, and local preview email delivery.
-- Review reminders, notification preferences, lifecycle emails for key risk/workflow events, authenticated reminder dispatch, and idempotent reminder behavior.
-- Tenant-scoped analytics API with reconciled exposure, governance coverage, appetite, overdue-work, and score-band metrics; accessible residual/inherent heat-map table; and focused analytics tests.
-- Risk-register and audit exports now generate requested CSV, XLSX, or PDF formats with matching filenames and content types. Invalid formats are rejected for PDF-only reports.
-- Report download and email delivery now record `REPORT_EXPORT` jobs with completion/failure status and bounded retry/backoff semantics, visible in the tenant-scoped job queue.
-- Permission-checked retry action for failed notification records, preserving tenant scope and auditability.
+- Expanded 8-report catalogue: Risk Register, Board Risk Report, Framework Gap Analysis, Treatment Status & Action Progress, Control Effectiveness Summary, Overdue Items (Reviews & Actions), Portfolio Exposure Summary, and Audit Activity Trail across CSV, XLSX, and PDF where applicable.
+- Dedicated Report Centre workspace at `/app/reports` with interactive report catalogue, format selectors, live reconciliation metrics, tier quotas, and direct email delivery.
+- Private report artifact storage abstraction (`ReportStorageAdapter` / `LocalReportStorageAdapter`) with tenant-prefixed keys, SHA-256 checksums, size metadata, expiration checks, and download audit logging.
+- Single-use, 24-hour expiring, SHA-256 hashed report download tokens with atomic consumption upon download, rejection of replayed/expired tokens, and private no-store cache headers.
+- Immutable point-in-time `AnalyticsSnapshot` generation (daily/monthly) capturing exposure, score distributions, heatmaps, and reconciliation data for trend consistency.
+- Durable background job outbox with full status lifecycle (`QUEUED` → `PROCESSING` → `COMPLETED` / `FAILED`), exponential backoff retry semantics, max attempt limits, and administrator retry action in `/app/operations/jobs`.
+- Robust notification delivery with non-corrupting error isolation (failures never roll back domain transactions), administrator retries, and webhook extension point for provider bounce/complaint ingestion.
+- Reconciled, residual-first insights dashboard with accessible 5×5 heat map, category, business unit, and objective concentration charts.
 
 **Partially developed**
 
-- Reporting is synchronous/local and stores artifacts in the database for assessment; background jobs, private tenant-scoped object storage, retention cleanup, checksums, and production provider retries are outstanding.
-- Insights now provide reconciled live metrics and heat-map data, but immutable trend snapshots, configurable KPI definitions, point-in-time report reads, and the full management report catalogue are incomplete.
-- Notification delivery has local/provider adapters, audit records, and an administrator retry action, but durable outbox/queue processing, attempt history, bounce handling, provider webhooks, digest scheduling, and escalation policies are incomplete.
+- Local development uses durable database-backed queue and local storage adapters; production cloud object storage (S3/GCS), distributed queue worker daemons, and provider bounce webhooks are reserved for hosted production infrastructure.
 
 **Not developed**
 
-- A production-grade analytics warehouse or independently operated historical trend pipeline remains not developed.
+- A multi-tenant enterprise data warehouse, automated BI connector pipelines, and production email deliverability monitoring remain future infrastructure milestones.
 
 ### Phase 5 - Production assurance and operations
 
