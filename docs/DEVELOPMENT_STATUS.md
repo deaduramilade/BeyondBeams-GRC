@@ -65,14 +65,17 @@ This document is the current capability inventory. It reconciles the `.clinerule
 
 **Developed**
 
-- Seeded ISO 27001, NIST CSF 2.0, SOC 2, HIPAA Security Rule, and fintech/payment control catalogues.
-- Workspace framework enable/disable, plan limits, control browsing, risk-to-control mapping, unmapped-risk view, curated compliance references, and framework gap-analysis output.
-- Emerging-risk monitoring, settlement/promotion workflow, industry library, and board-language translator with usage limits.
+- Seeded ISO 27001, NIST CSF 2.0, SOC 2, HIPAA Security Rule, and Fintech/Payment control catalogues carrying explicit versions, publication dates, last reviewed dates, content owners, official source URLs, and a traceable version history changelog (`frameworkChangelog`).
+- Structured mapping applicability decisions (`APPLICABLE`, `PARTIALLY_APPLICABLE`, `NOT_APPLICABLE`) with decision rationale, reviewed timestamps, reviewer attribution, and auditable event tracking.
+- Tenant-scoped control profile administration allowing organisations to annotate control owners, implementation status, effectiveness, and test frequency without mutating the global catalogue.
+- Human-readable taxonomy joins everywhere: Business Unit, Objective, Risk Source, and Regulatory Domain are resolved across register table columns, searchable text, filter dropdowns, detail views, analytics distributions, and CSV, XLSX, and PDF exports.
+- Enriched interactive and exportable gap analysis computing unmapped controls per enabled framework, risks awaiting mapping, high residual exposure risks lacking control coverage, and applicability decision breakdowns, exportable as interactive views, board-ready PDFs, and multi-tab Excel (`.xlsx`) workbooks.
+- Product quantity stacking ($1\times$ to $99\times$) across all paid tiers with dynamic totals, scaled member capacities (e.g. up to 50 members per unit on Premium), and clear plan limits.
+- Emerging-risk monitoring, settlement/promotion workflows preserving governance and compliance linkages, industry libraries (healthcare, fintech, digital banks, crypto, forex), and context-enriched board-language translator.
 
 **Partially developed**
 
-- Framework mapping is a governance aid, not certification. This increment adds catalogue source/applicability metadata, publication/review ownership fields, a PostgreSQL migration, and tenant-scoped organisational-context selectors on risk records. Control evidence linkage and control testing remain partial: profiles and evidence metadata exist, but private file storage, scanning, test-result history, and effectiveness rollups are not production-ready.
-- Taxonomy administration now feeds risk create/edit forms and is validated server-side for tenant ownership. Context identifiers are included in risk exports, while human-readable taxonomy joins in analytics, filters, and historical reporting remain the next integration step.
+- Framework mapping and gap analysis operate as internal governance aids with explicit disclaimers; private S3 object storage for binary evidence uploads, automated antivirus scanning, and third-party vendor risk integrations are reserved for hosted production infrastructure.
 
 **Not developed**
 

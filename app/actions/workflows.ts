@@ -42,12 +42,81 @@ export async function settleEmergingRisk(id: string, decision: string, promote: 
   await db.auditEvent.create({ data: { tenantId: session.user.tenantId, actorId: session.user.id, action: "UPDATE", entityType: "EmergingRisk", entityId: id, summary: promote ? `Promoted emerging risk into the formal register` : `Settled emerging risk without promotion`, changes: decision } }); revalidatePath("/app/emerging-risks"); revalidatePath("/app/risks"); return { success: true };
 }
 
-export async function translateForBoard(input: string) {
-  const session = await requireRole(Object.values(Role)); const text = z.string().trim().min(20).max(5000).safeParse(input); if (!text.success) return { error: "Enter at least 20 characters of technical risk context." };
-  const entitlement = await db.$transaction(async (tx) => { const user = await tx.user.findFirst({ where: { id: session.user.id, tenantId: session.user.tenantId }, select: { translatorUses: true, paidPlan: true } }); if (!user) return null; if (!user.paidPlan && user.translatorUses >= 3) return false; await tx.user.update({ where: { id: session.user.id }, data: { translatorUses: { increment: 1 } } }); return user; });
-  if (entitlement === null) return { error: "User not found." }; if (entitlement === false) return { error: "Your 3 free board translations have been used. Upgrade to continue.", limitReached: true }; const user = entitlement;
-  const replacements: [RegExp,string][] = [[/vulnerabilit(?:y|ies)/gi,"control weakness"],[/threat actor/gi,"potential attacker"],[/data exfiltration/gi,"unauthorised loss of information"],[/ransomware/gi,"criminal disruption and extortion"],[/non-compliance/gi,"regulatory exposure"],[/CVE-\S+/gi,"a known software weakness"],[/RTO/gi,"recovery time objective"],[/privileged access/gi,"high-level system access"]];
-  let clear = text.data; replacements.forEach(([pattern,value]) => { clear = clear.replace(pattern,value); });
-  const output = `Business exposure\n${clear}\n\nBoard perspective\nThis may affect operational continuity, stakeholder trust, regulatory standing, or financial performance. Management should confirm the accountable owner, quantify the plausible impact, validate current controls, and report progress against a dated treatment decision.`;
-  await db.auditEvent.create({ data: { tenantId: session.user.tenantId, actorId: session.user.id, action: "CREATE", entityType: "BoardTranslation", entityId: session.user.id, summary: "Generated board-language translation" } }); revalidatePath("/app/translator"); return { success: true, output, remaining: user.paidPlan ? null : Math.max(0, 2 - user.translatorUses) };
+export async function translateForBoard(
+  input: string,
+  context?: {
+    riskReference?: string;
+    controls?: string[];
+    businessUnit?: string;
+    objective?: string;
+  }
+) {
+  const session = await requireRole(Object.values(Role));
+  const parsed = z.string().trim().min(20).max(5000).safeParse(input);
+  if (!parsed.success) return { error: "Enter at least 20 characters of technical risk context." };
+
+  const entitlement = await db.$transaction(async (tx) => {
+    const user = await tx.user.findFirst({
+      where: { id: session.user.id, tenantId: session.user.tenantId },
+      select: { translatorUses: true, paidPlan: true },
+    });
+    if (!user) return null;
+    if (!user.paidPlan && user.translatorUses >= 3) return false;
+    await tx.user.update({
+      where: { id: session.user.id },
+      data: { translatorUses: { increment: 1 } },
+    });
+    return user;
+  });
+
+  if (entitlement === null) return { error: "User not found." };
+  if (entitlement === false) {
+    return { error: "Your 3 free board translations have been used. Upgrade to continue.", limitReached: true };
+  }
+  const user = entitlement;
+
+  const replacements: [RegExp, string][] = [
+    [/vulnerabilit(?:y|ies)/gi, "control weakness"],
+    [/threat actor/gi, "potential attacker"],
+    [/data exfiltration/gi, "unauthorised loss of information"],
+    [/ransomware/gi, "criminal disruption and extortion"],
+    [/non-compliance/gi, "regulatory exposure"],
+    [/CVE-\S+/gi, "a known software weakness"],
+    [/RTO/gi, "recovery time objective"],
+    [/privileged access/gi, "high-level system access"],
+  ];
+  let clear = parsed.data;
+  replacements.forEach(([pattern, value]) => {
+    clear = clear.replace(pattern, value);
+  });
+
+  let contextSummary = "";
+  if (context?.businessUnit || context?.objective) {
+    contextSummary += `\n\nStrategic alignment: Affects ${context.businessUnit ?? "general operations"}${
+      context.objective ? ` and the '${context.objective}' objective` : ""
+    }.`;
+  }
+  if (context?.controls && context.controls.length > 0) {
+    contextSummary += `\nGoverning controls: Aligned to ${context.controls.join(", ")}.`;
+  }
+
+  const output = `Business exposure\n${clear}${contextSummary}\n\nBoard perspective\nThis may affect operational continuity, stakeholder trust, regulatory standing, or financial performance. Management should confirm the accountable owner, quantify the plausible impact, validate current controls, and report progress against a dated treatment decision.`;
+
+  await db.auditEvent.create({
+    data: {
+      tenantId: session.user.tenantId,
+      actorId: session.user.id,
+      action: "CREATE",
+      entityType: "BoardTranslation",
+      entityId: session.user.id,
+      summary: "Generated board-language translation",
+    },
+  });
+
+  revalidatePath("/app/translator");
+  return {
+    success: true,
+    output,
+    remaining: user.paidPlan ? null : Math.max(0, 3 - (user.translatorUses + 1)),
+  };
 }
